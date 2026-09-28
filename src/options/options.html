@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <title data-i18n="optionsPageTitle">Img2Prompt 设置</title>
+    <link rel="stylesheet" href="options.css" />
+  </head>
+  <body>
+    <main class="options">
+      <h1 data-i18n="optionsPageTitle">Img2Prompt 设置</h1>
+      <p class="hint" data-i18n="optionsHint"></p>
+
+      <label class="field">
+        <span data-i18n="optionsApiKey">API Key</span>
+        <input id="apiKey" type="password" autocomplete="off" data-i18n-ph="optionsApiKeyPh" />
+      </label>
+
+      <label class="field">
+        <span data-i18n="optionsBaseUrl">Base URL</span>
+        <input id="baseUrl" type="url" autocomplete="off" spellcheck="false" />
+      </label>
+
+      <label class="field">
+        <span data-i18n="optionsModel">模型</span>
+        <input id="model" type="text" autocomplete="off" spellcheck="false" />
+      </label>
+
+      <label class="field">
+        <span data-i18n="optionsDefaultLang">默认语言</span>
+        <select id="defaultLang">
+          <option value="zh" data-i18n="optionsLangZh">中文</option>
+          <option value="en" data-i18n="optionsLangEn">英文</option>
+        </select>
+      </label>
+
+      <div class="actions">
+        <button id="saveBtn" class="primary" data-i18n="optionsSave">保存</button>
+        <button id="testBtn" data-i18n="optionsTest">测试连接</button>
+        <span id="status" class="status" aria-live="polite"></span>
+      </div>
+    </main>
+    <script type="module" src="options.js"></script>
+  </body>
+</html>
