@@ -111,16 +111,19 @@ function bindEvents(shadow: ShadowRoot): void {
       }
     });
   });
-  shadow.querySelector('.ip-copy')?.addEventListener('click', async (event) => {
-    const ok = await copyText(currentText);
-    const btn = event.currentTarget as HTMLButtonElement;
-    if (ok) {
-      const original = btn.textContent;
-      btn.textContent = t('panelCopied');
-      setTimeout(() => {
-        btn.textContent = original;
-      }, COPIED_TIP_DURATION_MS);
-    }
+  shadow.querySelector('.ip-copy')?.addEventListener('click', (event) => {
+    // 注意：必须在 await 之前捕获按钮引用；await 之后 event.currentTarget 已被回收为 null
+    const btn = event.currentTarget as HTMLButtonElement | null;
+    void (async () => {
+      const ok = await copyText(currentText);
+      if (ok && btn) {
+        const original = btn.textContent;
+        btn.textContent = t('panelCopied');
+        setTimeout(() => {
+          btn.textContent = original;
+        }, COPIED_TIP_DURATION_MS);
+      }
+    })();
   });
 }
 
