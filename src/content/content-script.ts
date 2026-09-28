@@ -84,7 +84,9 @@ function setState(state: PanelState, text?: string, error?: string): void {
         : '',
       `</div>`,
     ].join('');
-    shadow.querySelector('.ip-retry')?.addEventListener('click', () => requestGenerate(currentLang));
+    shadow
+      .querySelector('.ip-retry')
+      ?.addEventListener('click', () => requestGenerate(currentLang));
     shadow.querySelector('.ip-goto-settings')?.addEventListener('click', () => {
       chrome.runtime.sendMessage({ type: 'IMG2PROMPT_OPEN_OPTIONS' });
     });

@@ -51,7 +51,7 @@ export async function getHistory(): Promise<HistoryItem[]> {
  * @returns 落盘后的完整条目（含 id 与 createdAt）
  */
 export async function addHistoryItem(
-  item: Omit<HistoryItem, 'id' | 'createdAt'>,
+  item: Omit<HistoryItem, 'id' | 'createdAt'>
 ): Promise<HistoryItem> {
   const entry: HistoryItem = {
     ...item,

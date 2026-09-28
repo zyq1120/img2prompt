@@ -40,7 +40,7 @@ export interface ConnectionTestOptions {
 
 /** 携带 HTTP 状态码的业务错误，message 均为用户可读文案 */
 export class VisionApiError extends Error {
-  readonly status?: number;
+  readonly status: number | undefined;
 
   constructor(message: string, status?: number) {
     super(message);
@@ -64,9 +64,7 @@ export function joinUrl(baseUrl: string, path: string): string {
  *
  * @throws {VisionApiError} 入参缺失、HTTP 错误、超时、网络失败或模型返回为空时抛出
  */
-export async function generateImagePrompt(
-  options: GenerateImagePromptOptions,
-): Promise<string> {
+export async function generateImagePrompt(options: GenerateImagePromptOptions): Promise<string> {
   const { apiKey, baseUrl, model, imageDataUrl, lang } = options;
   const timeoutMs = options.timeoutMs ?? DEFAULT_TIMEOUT_MS;
 
@@ -178,7 +176,7 @@ export async function testConnection(options: ConnectionTestOptions): Promise<tr
  */
 export async function fetchImageAsDataUrl(
   imageUrl: string,
-  maxEdgePx: number = MAX_IMAGE_EDGE_PX,
+  maxEdgePx: number = MAX_IMAGE_EDGE_PX
 ): Promise<string> {
   const response = await fetch(imageUrl);
   if (!response.ok) {

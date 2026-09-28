@@ -15,8 +15,7 @@ import type { PromptLanguage } from './types.js';
  */
 export function buildSystemPrompt(lang: PromptLanguage): string {
   const outputLanguage = lang === 'zh' ? 'Simplified Chinese' : 'English';
-  const lengthHint =
-    lang === 'zh' ? '80-200 个汉字' : '60-150 English words';
+  const lengthHint = lang === 'zh' ? '80-200 个汉字' : '60-150 English words';
 
   return [
     'You are an expert prompt engineer for AI image generation tools',

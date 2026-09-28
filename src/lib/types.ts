@@ -75,7 +75,4 @@ export interface StartMessage {
 
 /** 插件内所有跨上下文消息的联合类型 */
 export type ExtensionMessage =
-  | PanelStateMessage
-  | GenerateRequestMessage
-  | StartMessage
-  | OpenOptionsMessage;
+  PanelStateMessage | GenerateRequestMessage | StartMessage | OpenOptionsMessage;
