@@ -1,0 +1,19 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <link rel="stylesheet" href="popup.css" />
+  </head>
+  <body>
+    <header class="popup-header">
+      <h1 data-i18n="popupTitle">最近生成</h1>
+      <div class="header-actions">
+        <button id="clearBtn" class="ghost" data-i18n="popupClear">清空</button>
+        <button id="optionsBtn" class="ghost" data-i18n="popupOpenOptions">设置</button>
+      </div>
+    </header>
+    <main id="historyList" class="history-list"></main>
+    <p id="emptyState" class="empty" data-i18n="popupEmpty" hidden></p>
+    <script type="module" src="popup.js"></script>
+  </body>
+</html>
