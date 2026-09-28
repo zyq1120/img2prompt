@@ -53,10 +53,18 @@ export interface PanelStateMessage {
 /** content script → background：请求生成提示词 */
 export interface GenerateRequestMessage {
   type: 'IMG2PROMPT_GENERATE';
-  /** 图片 dataURL（已压缩） */
-  imageDataUrl: string;
+  /**
+   * 图片 dataURL（已压缩）。
+   * content script 发起重试/切换语言时可省略，background 会使用该 tab 缓存的图片。
+   */
+  imageDataUrl?: string;
   /** 期望输出语言 */
   lang: PromptLanguage;
+}
+
+/** content script → background：打开设置页 */
+export interface OpenOptionsMessage {
+  type: 'IMG2PROMPT_OPEN_OPTIONS';
 }
 
 /** background → content script：开始一次新的识别（携带原图 URL） */
@@ -66,4 +74,8 @@ export interface StartMessage {
 }
 
 /** 插件内所有跨上下文消息的联合类型 */
-export type ExtensionMessage = PanelStateMessage | GenerateRequestMessage | StartMessage;
+export type ExtensionMessage =
+  | PanelStateMessage
+  | GenerateRequestMessage
+  | StartMessage
+  | OpenOptionsMessage;
