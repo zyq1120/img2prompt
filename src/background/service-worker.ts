@@ -182,4 +182,13 @@ async function sendToTab(tabId: number, message: ExtensionMessage): Promise<void
   }
 }
 
+/**
+ * E2E 验证钩子：自动化测试通过它触发与右键菜单点击完全相同的链路
+ * （handleMenuClick → 注入面板 → 下载压缩 → 调模型 → 推送状态）。
+ * 生产环境中右键菜单是唯一调用方；该钩子不改变任何生产行为。
+ */
+(globalThis as unknown as { __img2promptE2E?: unknown }).__img2promptE2E = {
+  handleMenuClick: (tabId: number, imageUrl: string) => handleMenuClick(tabId, imageUrl),
+};
+
 export {};
