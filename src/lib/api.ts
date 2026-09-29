@@ -5,8 +5,17 @@
  * OpenAI、OpenRouter、Groq、Ollama、LM Studio、DeepSeek 等。
  * 所有请求均由用户浏览器直接发往其配置的 Base URL，无中间服务器。
  */
-import { buildSystemPrompt, buildUserText } from './prompt-templates.js';
-import type { PromptLanguage } from './types.js';
+import {
+  buildTemplateSystemPrompt,
+  buildTemplateUserText,
+  getBuiltinTemplate,
+} from './prompt-templates.js';
+import type {
+  OutputFormat,
+  PromptLanguage,
+  PromptTemplate,
+  StructuredPrompt,
+} from './types.js';
 
 /** 默认请求超时：60 秒 */
 const DEFAULT_TIMEOUT_MS = 60_000;
@@ -26,9 +35,21 @@ export interface GenerateImagePromptOptions {
   /** 已压缩的图片 dataURL */
   imageDataUrl: string;
   lang: PromptLanguage;
+  /** 提示词模板（省略时用内置"通用"模板） */
+  template?: PromptTemplate;
   /** 超时毫秒数，默认 60 秒 */
   timeoutMs?: number;
+  /**
+   * 外部取消信号（如用户点击"取消"）。
+   * 触发时请求被中止并抛出"已取消"错误，与超时区分处理。
+   */
+  signal?: AbortSignal;
 }
+
+/** 生成结果：文本模式或结构化 JSON 模式 */
+export type GenerateResult =
+  | { format: 'text'; text: string }
+  | { format: 'json'; text: string; structured: StructuredPrompt };
 
 export interface ConnectionTestOptions {
   apiKey: string;
@@ -62,11 +83,16 @@ export function joinUrl(baseUrl: string, path: string): string {
 /**
  * 调用视觉模型，根据图片生成绘画提示词。
  *
- * @throws {VisionApiError} 入参缺失、HTTP 错误、超时、网络失败或模型返回为空时抛出
+ * @throws {VisionApiError} 入参缺失、HTTP 错误、超时、用户取消、网络失败、
+ *   模型返回为空或 JSON 解析失败时抛出
  */
-export async function generateImagePrompt(options: GenerateImagePromptOptions): Promise<string> {
+export async function generateImagePrompt(
+  options: GenerateImagePromptOptions
+): Promise<GenerateResult> {
   const { apiKey, baseUrl, model, imageDataUrl, lang } = options;
   const timeoutMs = options.timeoutMs ?? DEFAULT_TIMEOUT_MS;
+  const template = options.template ?? getBuiltinTemplate('builtin:general');
+  const outputFormat: OutputFormat = template.outputFormat;
 
   if (!apiKey.trim()) {
     throw new VisionApiError('尚未填写 API Key，请先打开设置页完成配置');
@@ -74,32 +100,42 @@ export async function generateImagePrompt(options: GenerateImagePromptOptions): 
   if (!baseUrl.trim()) {
     throw new VisionApiError('尚未填写 Base URL，请先打开设置页完成配置');
   }
+  if (options.signal?.aborted) {
+    throw new VisionApiError('已取消本次请求');
+  }
 
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeoutMs);
+  const onExternalAbort = (): void => controller.abort();
+  options.signal?.addEventListener('abort', onExternalAbort, { once: true });
 
   try {
+    const body: Record<string, unknown> = {
+      model: model.trim(),
+      max_tokens: MAX_OUTPUT_TOKENS,
+      temperature: 0.7,
+      messages: [
+        { role: 'system', content: buildTemplateSystemPrompt(template, lang) },
+        {
+          role: 'user',
+          content: [
+            { type: 'text', text: buildTemplateUserText(template, lang) },
+            { type: 'image_url', image_url: { url: imageDataUrl } },
+          ],
+        },
+      ],
+    };
+    if (outputFormat === 'json') {
+      body.response_format = { type: 'json_object' };
+    }
+
     const response = await fetch(joinUrl(baseUrl, '/chat/completions'), {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
         Authorization: `Bearer ${apiKey.trim()}`,
       },
-      body: JSON.stringify({
-        model: model.trim(),
-        max_tokens: MAX_OUTPUT_TOKENS,
-        temperature: 0.7,
-        messages: [
-          { role: 'system', content: buildSystemPrompt(lang) },
-          {
-            role: 'user',
-            content: [
-              { type: 'text', text: buildUserText(lang) },
-              { type: 'image_url', image_url: { url: imageDataUrl } },
-            ],
-          },
-        ],
-      }),
+      body: JSON.stringify(body),
       signal: controller.signal,
     });
 
@@ -114,18 +150,70 @@ export async function generateImagePrompt(options: GenerateImagePromptOptions): 
     if (!text) {
       throw new VisionApiError('模型返回内容为空，请重试');
     }
-    return text;
+    if (outputFormat === 'json') {
+      const structured = parseStructuredPrompt(text);
+      return { format: 'json', text: structured.prompt, structured };
+    }
+    return { format: 'text', text };
   } catch (error) {
     if (error instanceof VisionApiError) {
       throw error;
     }
     if (error instanceof DOMException && error.name === 'AbortError') {
+      if (options.signal?.aborted) {
+        throw new VisionApiError('已取消本次请求');
+      }
       throw new VisionApiError('请求超时：模型响应太慢，请重试或更换模型');
     }
     throw new VisionApiError('网络请求失败：请检查 Base URL 与网络连接');
   } finally {
     clearTimeout(timer);
+    options.signal?.removeEventListener('abort', onExternalAbort);
   }
+}
+
+/**
+ * 解析模型返回的结构化 JSON，容忍 markdown 代码围栏与多余字段。
+ * 字段缺失时用空值兜底，保证调用方总能拿到可用对象。
+ *
+ * @throws {VisionApiError} 完全无法解析为 JSON 时抛出
+ */
+export function parseStructuredPrompt(raw: string): StructuredPrompt {
+  const cleaned = raw
+    .trim()
+    .replace(/^```(?:json)?\s*/i, '')
+    .replace(/\s*```$/, '');
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(cleaned);
+  } catch {
+    throw new VisionApiError('模型返回的不是合法 JSON，请重试或换用文本模板');
+  }
+  if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
+    throw new VisionApiError('模型返回的不是合法 JSON，请重试或换用文本模板');
+  }
+  const obj = parsed as Record<string, unknown>;
+  return {
+    prompt: typeof obj.prompt === 'string' ? obj.prompt.trim() : '',
+    tags: toStringArray(obj.tags),
+    style: typeof obj.style === 'string' ? obj.style.trim() : '',
+    colors: toStringArray(obj.colors),
+    mood: typeof obj.mood === 'string' ? obj.mood.trim() : '',
+  };
+}
+
+/** 宽容地把未知值转为字符串数组（兼容逗号分隔字符串） */
+function toStringArray(value: unknown): string[] {
+  if (Array.isArray(value)) {
+    return value.filter((v): v is string => typeof v === 'string').map((s) => s.trim()).filter(Boolean);
+  }
+  if (typeof value === 'string') {
+    return value
+      .split(/[,，]/)
+      .map((s) => s.trim())
+      .filter(Boolean);
+  }
+  return [];
 }
 
 /**
@@ -206,6 +294,70 @@ export async function fetchImageAsDataUrl(
  */
 export function makeThumbnail(imageUrl: string): Promise<string> {
   return fetchImageAsDataUrl(imageUrl, THUMBNAIL_EDGE_PX);
+}
+
+/**
+ * 把已有的图片 dataURL 等比压缩到指定长边（service worker 安全：OffscreenCanvas）。
+ * 用于选区截图/本地上传场景生成历史缩略图。
+ */
+export async function downscaleDataUrl(dataUrl: string, maxEdgePx: number): Promise<string> {
+  const response = await fetch(dataUrl);
+  const blob = await response.blob();
+  const bitmap = await createImageBitmap(blob);
+
+  const scale = Math.min(1, maxEdgePx / Math.max(bitmap.width, bitmap.height));
+  const width = Math.max(1, Math.round(bitmap.width * scale));
+  const height = Math.max(1, Math.round(bitmap.height * scale));
+
+  const canvas = new OffscreenCanvas(width, height);
+  const ctx = canvas.getContext('2d');
+  if (!ctx) {
+    throw new VisionApiError('图片处理失败：当前环境不支持画布');
+  }
+  ctx.drawImage(bitmap, 0, 0, width, height);
+  bitmap.close();
+
+  const outBlob = await canvas.convertToBlob({ type: 'image/jpeg', quality: JPEG_QUALITY });
+  return blobToDataUrl(outBlob);
+}
+
+/**
+ * 从整页截图 dataURL 中按 CSS 像素选区裁剪（考虑 devicePixelRatio）。
+ * service worker 安全。
+ */
+export async function cropScreenshot(
+  screenshotDataUrl: string,
+  rect: { x: number; y: number; width: number; height: number },
+  devicePixelRatio: number,
+  maxEdgePx: number = MAX_IMAGE_EDGE_PX
+): Promise<string> {
+  const response = await fetch(screenshotDataUrl);
+  const blob = await response.blob();
+  const bitmap = await createImageBitmap(blob);
+
+  const dpr = devicePixelRatio > 0 ? devicePixelRatio : 1;
+  const sx = Math.max(0, Math.round(rect.x * dpr));
+  const sy = Math.max(0, Math.round(rect.y * dpr));
+  const sw = Math.min(bitmap.width - sx, Math.round(rect.width * dpr));
+  const sh = Math.min(bitmap.height - sy, Math.round(rect.height * dpr));
+  if (sw <= 0 || sh <= 0) {
+    throw new VisionApiError('选区无效，请重新框选');
+  }
+
+  const scale = Math.min(1, maxEdgePx / Math.max(sw, sh));
+  const width = Math.max(1, Math.round(sw * scale));
+  const height = Math.max(1, Math.round(sh * scale));
+
+  const canvas = new OffscreenCanvas(width, height);
+  const ctx = canvas.getContext('2d');
+  if (!ctx) {
+    throw new VisionApiError('图片处理失败：当前环境不支持画布');
+  }
+  ctx.drawImage(bitmap, sx, sy, sw, sh, 0, 0, width, height);
+  bitmap.close();
+
+  const outBlob = await canvas.convertToBlob({ type: 'image/jpeg', quality: JPEG_QUALITY });
+  return blobToDataUrl(outBlob);
 }
 
 function blobToDataUrl(blob: Blob): Promise<string> {

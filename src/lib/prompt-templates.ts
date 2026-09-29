@@ -205,6 +205,15 @@ export const BUILTIN_TEMPLATES: PromptTemplate[] = [
   },
 ];
 
+/** 按 id 取内置模板；找不到时回退默认模板 */
+export function getBuiltinTemplate(id: string): PromptTemplate {
+  return (
+    BUILTIN_TEMPLATES.find((t) => t.id === id) ??
+    BUILTIN_TEMPLATES.find((t) => t.id === DEFAULT_TEMPLATE_ID) ??
+    BUILTIN_TEMPLATES[0]
+  );
+}
+
 /** 输出语言名称（拼入 system prompt） */
 function outputLanguageName(lang: PromptLanguage): string {
   return lang === 'zh' ? 'Simplified Chinese' : 'English';

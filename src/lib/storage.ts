@@ -2,7 +2,11 @@
  * chrome.storage.local 的类型化封装。
  * API Key 仅保存在用户本地浏览器中，绝不上传、绝不进仓库。
  */
-import { BUILTIN_TEMPLATES, DEFAULT_TEMPLATE_ID } from './prompt-templates.js';
+import {
+  BUILTIN_TEMPLATES,
+  DEFAULT_TEMPLATE_ID,
+  getBuiltinTemplate,
+} from './prompt-templates.js';
 import type {
   HistoryItem,
   PluginSettings,
@@ -132,15 +136,6 @@ export async function getTemplates(): Promise<PromptTemplate[]> {
 export async function getTemplate(id: string): Promise<PromptTemplate> {
   const templates = await getTemplates();
   return templates.find((t) => t.id === id) ?? getBuiltinTemplate(DEFAULT_TEMPLATE_ID);
-}
-
-/** 取内置模板（同步，供 background 等无需 storage 的场景） */
-export function getBuiltinTemplate(id: string): PromptTemplate {
-  return (
-    BUILTIN_TEMPLATES.find((t) => t.id === id) ??
-    BUILTIN_TEMPLATES.find((t) => t.id === DEFAULT_TEMPLATE_ID) ??
-    BUILTIN_TEMPLATES[0]
-  );
 }
 
 /** 读取自定义模板 */
