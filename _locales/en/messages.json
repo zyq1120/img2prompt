@@ -264,5 +264,11 @@
   },
   "optionsHideKey": {
     "message": "Hide"
+  },
+  "optionsDraftProvider": {
+    "message": "Unnamed provider"
+  },
+  "apiKeyRequiredForTest": {
+    "message": "Please fill in the API Key and Base URL before testing"
   }
 }

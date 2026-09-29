@@ -10,6 +10,7 @@ import {
   buildTemplateUserText,
   getBuiltinTemplate,
 } from './prompt-templates.js';
+import { t } from './i18n.js';
 import type { OutputFormat, PromptLanguage, PromptTemplate, StructuredPrompt } from './types.js';
 
 /** 默认请求超时：60 秒 */
@@ -239,7 +240,7 @@ export async function testConnection(options: ConnectionTestOptions): Promise<tr
   const timeoutMs = options.timeoutMs ?? DEFAULT_TIMEOUT_MS;
 
   if (!apiKey.trim() || !baseUrl.trim()) {
-    throw new VisionApiError('请先填写 API Key 与 Base URL 再测试');
+    throw new VisionApiError(t('apiKeyRequiredForTest'));
   }
 
   const controller = new AbortController();

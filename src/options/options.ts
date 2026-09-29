@@ -36,6 +36,7 @@ const providerBaseUrlInput = document.getElementById('providerBaseUrl') as HTMLI
 const providerModelInput = document.getElementById('providerModel') as HTMLInputElement;
 const saveProviderBtn = document.getElementById('saveProviderBtn') as HTMLButtonElement;
 const cancelProviderBtn = document.getElementById('cancelProviderBtn') as HTMLButtonElement;
+const testDraftBtn = document.getElementById('testDraftBtn') as HTMLButtonElement;
 const toggleKeyBtn = document.getElementById('toggleKeyBtn') as HTMLButtonElement;
 
 /** 打开编辑器时重置 Key 为隐藏状态，避免上次的明文残留 */
@@ -115,6 +116,18 @@ addProviderBtn.addEventListener('click', () => {
 cancelProviderBtn.addEventListener('click', () => {
   providerEditor.hidden = true;
   editingProviderId = null;
+});
+
+/** 编辑器内测试：用表单里的值直接测，不用先保存 */
+testDraftBtn.addEventListener('click', () => {
+  const draft: ProviderConfig = {
+    id: editingProviderId ?? 'draft',
+    name: providerNameInput.value.trim() || t('optionsDraftProvider'),
+    apiKey: providerKeyInput.value,
+    baseUrl: providerBaseUrlInput.value.trim(),
+    model: providerModelInput.value.trim(),
+  };
+  void testProvider(draft, testDraftBtn);
 });
 
 saveProviderBtn.addEventListener('click', async () => {

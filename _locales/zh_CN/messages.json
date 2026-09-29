@@ -264,5 +264,11 @@
   },
   "optionsHideKey": {
     "message": "隐藏"
+  },
+  "optionsDraftProvider": {
+    "message": "未命名服务商"
+  },
+  "apiKeyRequiredForTest": {
+    "message": "请先填写 API Key 与 Base URL 再测试"
   }
 }

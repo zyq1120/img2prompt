@@ -6,6 +6,7 @@
  * 通过 chrome.runtime 消息与 background 通信。
  */
 import { applyI18n, t } from '../lib/i18n.js';
+import { escapeHtml, renderRichText } from '../lib/rich-text.js';
 import { getSettings, getTemplates, saveSettings } from '../lib/storage.js';
 import type {
   ExtensionMessage,
@@ -141,7 +142,7 @@ function setState(state: PanelState, text?: string, error?: string): void {
   } else if (state === 'result') {
     body.innerHTML = currentStructured
       ? renderStructured(currentStructured)
-      : `<pre class="ip-result">${escapeHtml(text ?? currentText)}</pre>`;
+      : `<pre class="ip-result">${renderRichText(text ?? currentText)}</pre>`;
     setCopyEnabled(shadow, true);
   } else {
     const goSettings = errorNeedsSettings(error);
@@ -182,7 +183,7 @@ function renderStructured(structured: StructuredPrompt): string {
       ? `<div class="ip-tags">${structured.tags.map((tag) => `<span class="ip-tag">${escapeHtml(tag)}</span>`).join('')}</div>`
       : '';
   return [
-    `<pre class="ip-result">${escapeHtml(currentText)}</pre>`,
+    `<pre class="ip-result">${renderRichText(currentText)}</pre>`,
     rows.length > 0 ? `<div class="ip-kv-list">${rows.join('')}</div>` : '',
     tags,
   ].join('');
@@ -316,15 +317,6 @@ async function copyText(text: string): Promise<boolean> {
   }
 }
 
-/** 转义 HTML，防止模型返回内容破坏面板结构 */
-function escapeHtml(raw: string): string {
-  return raw
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;');
-}
-
 /** 面板 HTML + CSS 模板（样式全部 scoped 在 shadow 内，遵循 Apple Human Interface Guidelines） */
 function panelTemplate(): string {
   return `
@@ -402,6 +394,7 @@ function panelTemplate(): string {
       margin: 0; font-family: inherit; font-size: 13px; line-height: 1.65;
       white-space: pre-wrap; word-break: break-word; color: #1c1c1e;
     }
+    .ip-result strong { font-weight: 700; }
     .ip-loading {
       display: flex; align-items: center; gap: 10px;
       color: #8e8e93; padding: 20px 4px 8px; font-size: 13px;
