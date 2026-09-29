@@ -1,0 +1,31 @@
+name: Release
+
+# 打 tag（如 v0.1.0）并 push 后，自动构建 zip 并创建 GitHub Release
+on:
+  push:
+    tags: ['v*.*.*']
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - run: npm ci
+      - run: npm run build -- --zip
+
+      - name: Create GitHub Release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release create "${{ github.ref_name }}" \
+            img2prompt-*.zip \
+            --title "${{ github.ref_name }}" \
+            --generate-notes
