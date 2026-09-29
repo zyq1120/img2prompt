@@ -1,6 +1,15 @@
 /**
- * img2prompt 真实浏览器 E2E：NVIDIA Build API 真实 Key 全链路。
- * Key 从环境变量 NVAPI_KEY 读取，不写入任何文件。跑完脚本可删。
+ * img2prompt Phase 2 真实浏览器 E2E：NVIDIA Build API 真实 Key 全链路。
+ * Key 从环境变量 NVAPI_KEY 读取，不写入任何文件。
+ *
+ * 覆盖：
+ *  1. options 新版 UI：添加 NVIDIA 服务商 → 设为当前 → 单行连接测试
+ *  2. 右键菜单链路：中文生成 → EN 切换
+ *  3. 选区截图链路：handleRegionDone（captureVisibleTab 真实截图 + 裁剪）
+ *  4. 面板模板切换到 builtin:json：结构化渲染
+ *  5. popup 拖拽上传链路：setInputFiles 真实文件 → 压缩 → 生成 → 历史
+ *
+ * 代理：E2E_PROXY=http://127.0.0.1:18080（e2e/fwd-proxy.mjs 转发上游）。
  */
 import { createRequire } from 'module';
 import fs from 'fs';
@@ -19,6 +28,7 @@ const PROFILE = fs.mkdtempSync(path.join(os.tmpdir(), 'img2prompt-nvapi-'));
 const BASE_URL = 'https://integrate.api.nvidia.com/v1';
 const MODEL = 'meta/llama-3.2-11b-vision-instruct';
 const IMAGE_URL = 'https://picsum.photos/seed/img2prompt/640/400';
+const UPLOAD_PNG = '/tmp/e2e-upload.png';
 
 function findChrome() {
   const candidates = [
@@ -76,31 +86,42 @@ try {
   if (!worker) throw new Error('no service worker');
   await cdpPage.close();
 
-  // ---- 设置页：填真实 NVIDIA 配置 + 测试连接 ----
+  // ---- 1. 设置页：新版 UI 添加 NVIDIA 服务商并设为当前 ----
   try {
     const p = await context.newPage();
     await p.goto(`chrome-extension://${extId}/options/options.html`);
     await p.waitForTimeout(800);
-    await p.fill('#apiKey', KEY);
-    await p.fill('#baseUrl', BASE_URL);
-    await p.fill('#model', MODEL);
-    await p.click('#saveBtn');
-    await p.waitForTimeout(500);
-    await p.click('#testBtn');
-    // 等待测试完成：按钮恢复可用后再断言（避开中间态 "Testing…" 也有 ok class 的问题）
-    await p.waitForFunction(
-      () => !document.querySelector('#testBtn').disabled,
-      undefined, { timeout: 30000 }
-    );
+    await p.click('#addProviderBtn');
+    await p.fill('#providerName', 'NVIDIA');
+    await p.fill('#providerKey', KEY);
+    await p.fill('#providerBaseUrl', BASE_URL);
+    await p.fill('#providerModel', MODEL);
+    await p.click('#saveProviderBtn');
+    await p.waitForTimeout(600);
+    const rowCount = await p.locator('.provider-row').count();
+    step('设置页：添加 NVIDIA 服务商', rowCount === 2, `${rowCount} rows`);
+
+    // 设为当前
+    const nvidiaRow = p.locator('.provider-row', { hasText: 'NVIDIA' });
+    await nvidiaRow.locator('input[type="radio"]').check();
+    await p.waitForTimeout(600);
+    const activeBadge = await nvidiaRow.locator('.badge.active').count();
+    step('设置页：NVIDIA 设为当前服务商', activeBadge === 1);
+
+    // 单行连接测试
+    const rowTestBtn = nvidiaRow.locator('.text-btn').nth(0);
+    const btnHandle = await rowTestBtn.elementHandle();
+    await rowTestBtn.click();
+    await p.waitForFunction((btn) => !btn.disabled, btnHandle, { timeout: 30000 });
     await p.waitForTimeout(300);
     const statusOk = await p.locator('#status.ok').count();
     const status = await p.textContent('#status');
-    await p.screenshot({ path: path.join(SHOTS, '01-options-nvapi.png') });
-    step('设置页：NVIDIA 配置保存 + 连接测试成功', statusOk > 0 && !/Testing|测试中/.test(status || ''), (status || '').trim().slice(0, 40));
+    await p.screenshot({ path: path.join(SHOTS, '11-options-providers.png') });
+    step('设置页：NVIDIA 单行连接测试成功', statusOk > 0, (status || '').trim().slice(0, 60));
     await p.close();
-  } catch (e) { step('设置页：NVIDIA 配置 + 连接测试', false, String(e).slice(0, 160)); }
+  } catch (e) { step('设置页：服务商管理', false, String(e).slice(0, 200)); }
 
-  // ---- 真实链路：右键菜单钩子 → 下载真图 → 生成 → 面板展示 ----
+  // ---- 宿主页面 + 测试图片 ----
   const page = await context.newPage();
   await page.goto(TEST_URL, { timeout: 45000 });
   await page.evaluate((img) => {
@@ -113,11 +134,10 @@ try {
   });
   step('定位宿主 tab', typeof tabId === 'number', `tabId=${tabId}`);
 
+  // ---- 2. 右键菜单链路：中文 ----
   await worker.evaluate(async ({ tabId, imageUrl }) => {
     await globalThis.__img2promptE2E.handleMenuClick(tabId, imageUrl);
   }, { tabId, imageUrl: IMAGE_URL });
-
-  // 等待中文生成结果（成功态 .ip-result，非报错）
   await page.waitForFunction(
     () => (document.querySelector('#img2prompt-panel-root')?.shadowRoot?.querySelector('.ip-result')?.textContent || '').length > 20,
     undefined, { timeout: 120000 }
@@ -126,12 +146,16 @@ try {
   const copyEnabled = await page.evaluate(
     () => !document.querySelector('#img2prompt-panel-root')?.shadowRoot?.querySelector('.ip-copy')?.disabled
   );
+  const tplOptions = await page.evaluate(
+    () => document.querySelector('#img2prompt-panel-root')?.shadowRoot?.querySelectorAll('.ip-template option')?.length || 0
+  );
   await page.waitForTimeout(600);
-  await page.screenshot({ path: path.join(SHOTS, '02-panel-zh.png') });
-  step('真实链路：中文绘画提示词生成并展示', zhText.length > 20 && copyEnabled, `${zhText.length}字，复制按钮可用=${copyEnabled}`);
-  console.log('中文结果预览：' + zhText.slice(0, 120));
+  await page.screenshot({ path: path.join(SHOTS, '12-panel-zh.png') });
+  step('右键链路：中文生成 + 面板模板下拉(7项)', zhText.length > 20 && copyEnabled && tplOptions === 7,
+    `${zhText.length}字, 模板${tplOptions}项`);
+  console.log('中文结果预览：' + zhText.slice(0, 100));
 
-  // ---- 中英切换：点 en → 重新生成英文 ----
+  // ---- 3. EN 切换 ----
   await page.locator('.ip-lang button[data-lang="en"]').click();
   await page.waitForSelector('.ip-loading', { timeout: 20000 });
   await page.waitForFunction(
@@ -142,11 +166,77 @@ try {
   );
   const enText = await page.evaluate(shadowText, '.ip-result');
   await page.waitForTimeout(600);
-  await page.screenshot({ path: path.join(SHOTS, '03-panel-en.png') });
+  await page.screenshot({ path: path.join(SHOTS, '13-panel-en.png') });
   step('中英切换：英文重新生成并展示', enText.length > 20 && enText !== zhText, `${enText.length} chars`);
-  console.log('英文结果预览：' + enText.slice(0, 120));
+
+  // ---- 4. 选区截图链路 ----
+  const rect = await page.evaluate(() => {
+    const r = document.querySelector('#target').getBoundingClientRect();
+    return { x: r.x, y: r.y, width: r.width, height: r.height };
+  });
+  const beforeRegion = enText;
+  await worker.evaluate(async ({ tabId, rect }) => {
+    await globalThis.__img2promptE2E.handleRegionDone(tabId, rect, 1);
+  }, { tabId, rect });
+  await page.waitForFunction(
+    (prev) => {
+      const t = document.querySelector('#img2prompt-panel-root')?.shadowRoot?.querySelector('.ip-result')?.textContent || '';
+      return t.length > 20 && t !== prev;
+    }, beforeRegion, { timeout: 120000 }
+  );
+  const regionText = await page.evaluate(shadowText, '.ip-result');
+  await page.waitForTimeout(600);
+  await page.screenshot({ path: path.join(SHOTS, '14-panel-region.png') });
+  step('选区截图：真实截图裁剪后生成', regionText.length > 20 && regionText !== beforeRegion,
+    `${regionText.length} chars`);
+  console.log('选区结果预览：' + regionText.slice(0, 100));
+
+  // ---- 5. JSON 模板：结构化渲染 ----
+  await page.evaluate(() => {
+    const sel = document.querySelector('#img2prompt-panel-root')?.shadowRoot?.querySelector('.ip-template');
+    sel.value = 'builtin:json';
+    sel.dispatchEvent(new Event('change', { bubbles: true }));
+  });
+  await page.waitForSelector('.ip-tags', { timeout: 120000 });
+  const tagCount = await page.evaluate(
+    () => document.querySelector('#img2prompt-panel-root')?.shadowRoot?.querySelectorAll('.ip-tag')?.length || 0
+  );
+  const kvCount = await page.evaluate(
+    () => document.querySelector('#img2prompt-panel-root')?.shadowRoot?.querySelectorAll('.ip-kv')?.length || 0
+  );
+  await page.waitForTimeout(600);
+  await page.screenshot({ path: path.join(SHOTS, '15-panel-json.png') });
+  step('JSON 模板：结构化渲染(tags/kv)', tagCount > 0, `tags=${tagCount}, kv=${kvCount}`);
 
   await page.close();
+
+  // ---- 6. popup 上传链路 ----
+  try {
+    const popup = await context.newPage();
+    await popup.goto(`chrome-extension://${extId}/popup/popup.html`);
+    await popup.waitForTimeout(800);
+    const provCount = await popup.locator('#providerSelect option').count();
+    step('popup：服务商下拉已加载', provCount === 2, `${provCount} options`);
+    await popup.setInputFiles('#fileInput', UPLOAD_PNG);
+    await popup.waitForFunction(
+      () => {
+        const box = document.querySelector('#uploadResult');
+        const spinner = document.querySelector('#uploadSpinner');
+        const txt = document.querySelector('#uploadText')?.textContent || '';
+        return box && !box.hidden && spinner?.hidden && txt.length > 10
+          && !/识别中|Recognizing/.test(txt);
+      },
+      undefined, { timeout: 120000 }
+    );
+    const uploadText = await popup.textContent('#uploadText');
+    const histCount = await popup.locator('.history-item').count();
+    await popup.waitForTimeout(400);
+    await popup.screenshot({ path: path.join(SHOTS, '16-popup-upload.png') });
+    step('popup 上传：真实文件生成 + 入历史', (uploadText || '').length > 10 && histCount >= 1,
+      `${(uploadText || '').length} chars, 历史${histCount}条`);
+    console.log('上传结果预览：' + (uploadText || '').slice(0, 100));
+    await popup.close();
+  } catch (e) { step('popup 上传链路', false, String(e).slice(0, 200)); }
 } catch (e) {
   step('E2E 执行', false, String(e).slice(0, 220));
 } finally {
