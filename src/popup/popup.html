@@ -12,6 +12,43 @@
         <button id="optionsBtn" class="ghost" data-i18n="popupOpenOptions">设置</button>
       </div>
     </header>
+
+    <section class="provider-bar">
+      <select id="providerSelect" class="pill-select" data-i18n-title="popupProviderTitle"></select>
+      <select id="templateSelect" class="pill-select" data-i18n-title="popupTemplateTitle"></select>
+    </section>
+
+    <section id="dropzone" class="dropzone" data-i18n-title="popupDropTitle">
+      <span class="dropzone-icon" aria-hidden="true">🖼️</span>
+      <span data-i18n="popupDropHint">拖拽图片到这里，或点击选择</span>
+      <input id="fileInput" type="file" accept="image/*" hidden />
+    </section>
+
+    <section id="uploadResult" class="upload-result" hidden>
+      <img id="uploadThumb" class="upload-thumb" alt="" />
+      <div class="upload-body">
+        <p id="uploadText" class="upload-text"></p>
+        <div class="upload-actions">
+          <button id="uploadCopy" class="mini-btn primary" data-i18n="panelCopy">复制</button>
+          <button id="uploadCancel" class="mini-btn" data-i18n="panelCancel">取消</button>
+        </div>
+      </div>
+      <span id="uploadSpinner" class="mini-spinner" hidden></span>
+    </section>
+
+    <section class="search-bar">
+      <input
+        id="searchInput"
+        class="search-input"
+        type="search"
+        data-i18n-ph="popupSearchPh"
+        placeholder="搜索历史记录"
+      />
+      <button id="favFilterBtn" class="fav-filter" data-i18n-title="popupFavOnlyTitle" aria-pressed="false">
+        ☆
+      </button>
+    </section>
+
     <main id="historyList" class="history-list"></main>
     <p id="emptyState" class="empty" data-i18n="popupEmpty" hidden></p>
     <script type="module" src="popup.js"></script>
