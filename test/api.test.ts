@@ -216,6 +216,27 @@ describe('parseStructuredPrompt', () => {
     expect(() => parseStructuredPrompt('{oops')).toThrow(VisionApiError);
     expect(() => parseStructuredPrompt('[1,2]')).toThrow(/JSON/);
   });
+
+  it('容忍模型在 JSON 前附加的标题文本', () => {
+    const raw =
+      '**AI 绘画提示词**\n\n{ "prompt": "a cat", "tags": ["cat"], "style": "realistic", "colors": ["white"], "mood": "calm" }';
+    const result = parseStructuredPrompt(raw);
+    expect(result.prompt).toBe('a cat');
+    expect(result.tags).toEqual(['cat']);
+    expect(result.style).toBe('realistic');
+  });
+
+  it('容忍 JSON 后的多余说明文本', () => {
+    const raw = '{"prompt": "a dog"}\n希望这个描述对你有帮助！';
+    const result = parseStructuredPrompt(raw);
+    expect(result.prompt).toBe('a dog');
+  });
+
+  it('围栏 + 前缀混合情况仍可提取', () => {
+    const raw = 'Here you go:\n```json\n{"prompt": "a bird"}\n```';
+    const result = parseStructuredPrompt(raw);
+    expect(result.prompt).toBe('a bird');
+  });
 });
 
 describe('testConnection', () => {

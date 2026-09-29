@@ -13,7 +13,8 @@ export const DEFAULT_TEMPLATE_ID = 'builtin:general';
 
 /** JSON 结构化输出的字段说明（拼入 system prompt） */
 const JSON_SCHEMA_HINT = [
-  'Output ONLY a JSON object with exactly these fields, no markdown fences, no extra text:',
+  'Output ONLY a JSON object with exactly these fields, no markdown fences, no extra text.',
+  'Start your response with { and end it with }. No title, no heading, no preamble, no explanation.',
   '{',
   '  "prompt": "the reusable image-generation prompt text",',
   '  "tags": ["comma", "separated", "descriptive", "tags"],',

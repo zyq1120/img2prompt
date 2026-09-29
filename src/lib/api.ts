@@ -172,11 +172,27 @@ export async function generateImagePrompt(
  *
  * @throws {VisionApiError} 完全无法解析为 JSON 时抛出
  */
-export function parseStructuredPrompt(raw: string): StructuredPrompt {
-  const cleaned = raw
+/**
+ * 从模型原始输出中提取 JSON 负载。
+ * 部分视觉模型（如 llama-3.2-vision）即使要求 json_object 仍会在 JSON
+ * 前后附加标题或说明（如 "**AI 绘画提示词**\n\n{...}"），这里做宽容提取：
+ * 去 markdown 围栏 → 取首个 { 到末个 } 之间的子串。
+ */
+function extractJsonPayload(raw: string): string {
+  const withoutFences = raw
     .trim()
     .replace(/^```(?:json)?\s*/i, '')
     .replace(/\s*```$/, '');
+  const start = withoutFences.indexOf('{');
+  const end = withoutFences.lastIndexOf('}');
+  if (start !== -1 && end !== -1 && end > start) {
+    return withoutFences.slice(start, end + 1);
+  }
+  return withoutFences;
+}
+
+export function parseStructuredPrompt(raw: string): StructuredPrompt {
+  const cleaned = extractJsonPayload(raw);
   let parsed: unknown;
   try {
     parsed = JSON.parse(cleaned);
