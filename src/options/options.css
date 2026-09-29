@@ -96,7 +96,8 @@ h1 {
 }
 
 .field input,
-.field select {
+.field select,
+.field textarea {
   width: 100%;
   padding: 9px 12px;
   font-size: 15px;
@@ -111,14 +112,158 @@ h1 {
     box-shadow 0.15s;
 }
 
-.field input::placeholder {
+.field textarea {
+  resize: vertical;
+  line-height: 1.6;
+  font-size: 14px;
+}
+
+.field input::placeholder,
+.field textarea::placeholder {
   color: #c7c7cc;
 }
 
 .field input:focus,
-.field select:focus {
+.field select:focus,
+.field textarea:focus {
   border-color: #007aff;
   box-shadow: 0 0 0 4px rgba(0, 122, 255, 0.15);
+}
+
+/* 服务商 / 模板列表 */
+.provider-list,
+.template-list {
+  display: flex;
+  flex-direction: column;
+}
+
+.provider-row,
+.template-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 0;
+}
+
+.provider-row + .provider-row,
+.template-row + .template-row {
+  border-top: 0.5px solid rgba(60, 60, 67, 0.12);
+}
+
+.provider-info,
+.template-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.provider-name,
+.template-name {
+  font-size: 15px;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.provider-meta,
+.template-meta {
+  font-size: 12px;
+  color: #8e8e93;
+  margin-top: 2px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.badge {
+  font-size: 11px;
+  font-weight: 600;
+  border-radius: 6px;
+  padding: 1px 7px;
+  background: rgba(0, 122, 255, 0.12);
+  color: #007aff;
+}
+
+.badge.json {
+  background: rgba(52, 199, 89, 0.14);
+  color: #248a3d;
+}
+
+.badge.active {
+  background: rgba(0, 122, 255, 0.12);
+  color: #007aff;
+}
+
+.row-actions {
+  display: flex;
+  gap: 4px;
+  flex: none;
+}
+
+.text-btn {
+  border: 0;
+  background: transparent;
+  font-family: inherit;
+  font-size: 14px;
+  font-weight: 400;
+  color: #007aff;
+  cursor: pointer;
+  padding: 8px 10px;
+  border-radius: 8px;
+  transition: background 0.15s;
+}
+
+.text-btn:hover {
+  background: rgba(120, 120, 128, 0.12);
+}
+
+.text-btn.danger {
+  color: #ff3b30;
+}
+
+.text-btn:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+.card-footer {
+  border-top: 0.5px solid rgba(60, 60, 67, 0.12);
+  padding: 4px 0;
+}
+
+/* 内联编辑器 */
+.editor[hidden] {
+  display: none;
+}
+
+.editor-title {
+  margin: 0;
+  padding: 12px 0 2px;
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.editor-actions {
+  display: flex;
+  gap: 10px;
+  padding: 12px 0;
+}
+
+.radio-label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  color: #3c3c43;
+  cursor: pointer;
+  flex: none;
+}
+
+.radio-label input {
+  accent-color: #007aff;
+  width: 16px;
+  height: 16px;
+  margin: 0;
 }
 
 .actions {
@@ -211,18 +356,21 @@ button:disabled {
   }
 
   .field input,
-  .field select {
+  .field select,
+  .field textarea {
     background: #2c2c2e;
     border-color: rgba(84, 84, 88, 0.65);
     color: #fff;
   }
 
-  .field input::placeholder {
+  .field input::placeholder,
+  .field textarea::placeholder {
     color: #636366;
   }
 
   .field input:focus,
-  .field select:focus {
+  .field select:focus,
+  .field textarea:focus {
     border-color: #0a84ff;
     box-shadow: 0 0 0 4px rgba(10, 132, 255, 0.25);
   }
@@ -243,6 +391,43 @@ button:disabled {
 
   .status.err {
     color: #ff453a;
+  }
+
+  .provider-row + .provider-row,
+  .template-row + .template-row,
+  .card-footer {
+    border-top-color: rgba(84, 84, 88, 0.6);
+  }
+
+  .provider-meta,
+  .template-meta {
+    color: #98989f;
+  }
+
+  .badge {
+    background: rgba(10, 132, 255, 0.18);
+    color: #0a84ff;
+  }
+
+  .badge.json {
+    background: rgba(48, 209, 88, 0.16);
+    color: #30d158;
+  }
+
+  .text-btn {
+    color: #0a84ff;
+  }
+
+  .text-btn:hover {
+    background: rgba(255, 255, 255, 0.08);
+  }
+
+  .text-btn.danger {
+    color: #ff453a;
+  }
+
+  .radio-label {
+    color: #ebebf5;
   }
 }
 

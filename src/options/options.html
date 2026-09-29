@@ -23,22 +23,84 @@
       </div>
       <p class="hint" data-i18n="optionsHint"></p>
 
-      <p class="card-title" data-i18n="optionsCardApi">API 配置</p>
+      <p class="card-title" data-i18n="optionsCardProviders">服务商</p>
       <div class="card">
+        <div id="providerList" class="provider-list"></div>
+        <div class="card-footer">
+          <button id="addProviderBtn" class="text-btn" data-i18n="optionsAddProvider">
+            ＋ 添加服务商
+          </button>
+        </div>
+      </div>
+
+      <div id="providerEditor" class="card editor" hidden>
+        <p class="editor-title" data-i18n="optionsProviderEditorTitle">服务商配置</p>
+        <label class="field">
+          <span data-i18n="optionsProviderName">名称</span>
+          <input id="providerName" type="text" autocomplete="off" data-i18n-ph="optionsProviderNamePh" />
+        </label>
         <label class="field">
           <span data-i18n="optionsApiKey">API Key</span>
-          <input id="apiKey" type="password" autocomplete="off" data-i18n-ph="optionsApiKeyPh" />
+          <input id="providerKey" type="password" autocomplete="off" data-i18n-ph="optionsApiKeyPh" />
         </label>
-
         <label class="field">
           <span data-i18n="optionsBaseUrl">Base URL</span>
-          <input id="baseUrl" type="url" autocomplete="off" spellcheck="false" />
+          <input id="providerBaseUrl" type="url" autocomplete="off" spellcheck="false" />
         </label>
-
         <label class="field">
           <span data-i18n="optionsModel">模型</span>
-          <input id="model" type="text" autocomplete="off" spellcheck="false" />
+          <input id="providerModel" type="text" autocomplete="off" spellcheck="false" />
         </label>
+        <div class="editor-actions">
+          <button id="saveProviderBtn" class="primary" data-i18n="optionsSave">保存</button>
+          <button id="cancelProviderBtn" data-i18n="optionsCancel">取消</button>
+        </div>
+      </div>
+
+      <p class="card-title" data-i18n="optionsCardTemplates">提示词模板</p>
+      <div class="card">
+        <div id="templateList" class="template-list"></div>
+        <div class="card-footer">
+          <button id="addTemplateBtn" class="text-btn" data-i18n="optionsAddTemplate">
+            ＋ 新建模板
+          </button>
+        </div>
+      </div>
+
+      <div id="templateEditor" class="card editor" hidden>
+        <p class="editor-title" data-i18n="optionsTemplateEditorTitle">模板编辑</p>
+        <label class="field">
+          <span data-i18n="optionsTemplateName">模板名称</span>
+          <input id="templateName" type="text" autocomplete="off" />
+        </label>
+        <label class="field">
+          <span data-i18n="optionsTemplateFormat">输出格式</span>
+          <select id="templateFormat">
+            <option value="text" data-i18n="optionsTemplateFormatText">文本</option>
+            <option value="json" data-i18n="optionsTemplateFormatJson">结构化 JSON</option>
+          </select>
+        </label>
+        <label class="field">
+          <span data-i18n="optionsTemplateSystem">System 提示词</span>
+          <textarea
+            id="templateSystem"
+            rows="8"
+            spellcheck="false"
+            data-i18n-ph="optionsTemplateSystemPh"
+          ></textarea>
+        </label>
+        <label class="field">
+          <span data-i18n="optionsTemplateUserZh">User 文本（中文输出时）</span>
+          <textarea id="templateUserZh" rows="2"></textarea>
+        </label>
+        <label class="field">
+          <span data-i18n="optionsTemplateUserEn">User 文本（英文输出时）</span>
+          <textarea id="templateUserEn" rows="2"></textarea>
+        </label>
+        <div class="editor-actions">
+          <button id="saveTemplateBtn" class="primary" data-i18n="optionsSave">保存</button>
+          <button id="cancelTemplateBtn" data-i18n="optionsCancel">取消</button>
+        </div>
       </div>
 
       <p class="card-title" data-i18n="optionsCardGeneral">通用</p>
