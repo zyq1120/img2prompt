@@ -163,8 +163,9 @@
 1. **刷新图标在错误态一直旋转**：`setState` 的 error 分支未清除 `spinning` 类。已修复，error/result 分支都清除。
 2. **`verify-uifix.mjs` 固定 profile 残留配置**：脚本用 `/tmp/e2e-uifix-profile` 固定路径，自身"已配 Key 反向边界"步骤写入的 Key 会污染下次运行，导致"未配 Key"断言失败。改为运行前 `chrome.storage.local.clear()`。产品代码无问题。
 
-### 11.5 待真实 API 验证
+### 11.5 真实 API 验证（2026-09-29，`verify-nvapi-v03.mjs`，7/7 通过）
 
-- 新模板的实际输出详细程度（需模型调用，断言字数/维度覆盖）
-- 刷新按钮在真实结果态的二次生成
-- 以上需要用户再次提供一次性 NVIDIA Key 后运行 `verify-nvapi.mjs` 扩展用例。
+- 连接测试成功；中文生成 **1563–1705 字**（旧模板典型约 100–150 字），详细度目标达成
+- 刷新按钮真实触发重新生成，新结果措辞不同、同样详细，元信息 caption 同步更新
+- **发现的模型侧现象**：第一次运行中第二次生成陷入复读 loop（"树林道路"重复几十次，1874 字），属 llama-3.2-vision 的随机退化，非产品 bug；已在模板中追加防复读约束（"Never repeat the same phrase; state each detail once"），第二次运行两次生成均连贯无复读
+- Key 仅作进程环境变量一次性使用；**用后请轮换**

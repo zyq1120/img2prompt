@@ -45,6 +45,8 @@ function baseRequirements(): string[] {
     '  no explanations, no meta-commentary.',
     '- Length: about {lengthHint}. Prefer completeness over brevity;',
     '  a longer precise prompt is better than a short vague one.',
+    '- Never repeat the same phrase or sentence; state each detail once.',
+    '  Redundancy is worse than brevity.',
     '- Output ONLY the prompt text, nothing else.',
   ];
 }
@@ -60,6 +62,8 @@ function detailFooter(): string[] {
     '  no explanations, no meta-commentary.',
     '- Length: about {lengthHint}. Prefer completeness over brevity;',
     '  a longer precise prompt is better than a short vague one.',
+    '- Never repeat the same phrase or sentence; state each detail once.',
+    '  Redundancy is worse than brevity.',
     '- Output ONLY the prompt text, nothing else.',
   ];
 }
