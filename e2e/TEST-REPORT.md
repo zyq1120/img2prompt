@@ -126,7 +126,8 @@
 
 ## 10. 发布状态
 
-- `v0.2.0` tag 已打，release.yml 自动构建 zip 并创建 GitHub Release，全绿；资产 `img2prompt-v0.2.0.zip`（28 文件）已下载验包。
+- `v0.2.0` tag 已打，release.yml 自动构建 zip 并创建 GitHub Release，全绿；资产 `img2prompt-v0.2.0.zip` 已下载验包。
+- `v0.3.0`（2026-09-29）：用户确认后打 tag，release.yml 自动构建并创建 GitHub Release，全绿；资产 `img2prompt-v0.3.0.zip`（19 文件，与本地 dist 一致）已下载验包：manifest `0.3.0`、`region-select` command 已注册、`ip-refresh` 与防复读约束代码在包内。
 - 本轮测试使用的 NVIDIA Key 仅作进程环境变量一次性使用，未写入仓库或记忆；**用后请轮换**。
 
 ## 11. v0.3.0 开发测试（2026-09-29，未发布）
