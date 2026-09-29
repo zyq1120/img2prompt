@@ -51,6 +51,32 @@ step('空状态显示', emptyVisible);
 step('未配 Key 时出现配置按钮', ctaVisible, `文案="${ctaText}"`);
 await popup.screenshot({ path: path.join(SHOTS, 'ui-popup-empty.png') });
 
+// —— 反向边界：已配置 Key 时，配置按钮必须隐藏 ——
+await worker.evaluate(async () => {
+  // 新 profile 的 storage 是空的（默认只在内存合并），直接写入完整设置
+  const settings = {
+    providers: [
+      {
+        id: 'test',
+        name: 'Test',
+        baseUrl: 'https://api.openai.com/v1',
+        apiKey: 'sk-test-fake-key',
+        model: 'gpt-4o',
+      },
+    ],
+    activeProviderId: 'test',
+    activeTemplateId: 'builtin:general',
+    defaultLang: 'zh',
+  };
+  await chrome.storage.local.set({ 'img2prompt.settings': settings });
+});
+await popup.reload();
+await popup.waitForTimeout(800);
+const ctaHiddenWithKey = await popup.$eval('#setupApiBtn', (el) => el.hidden);
+const emptyStillVisible = await popup.$eval('#emptyState', (el) => !el.hidden);
+step('已配 Key 时配置按钮隐藏', ctaHiddenWithKey);
+step('已配 Key 时空状态文案仍显示', emptyStillVisible);
+
 // —— options Key 切换 ——
 const options = await browser.newPage();
 await options.setViewportSize({ width: 900, height: 700 });

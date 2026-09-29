@@ -96,17 +96,24 @@ try {
   worker.on('pageerror', (e) => workerErrors.push(String((e && e.message) || e)));
   await cdpPage.close();
 
-  // ---- options page ----
+  // ---- options page (v0.2.0: multi-provider) ----
   try {
     const p = await context.newPage();
     await p.goto(`chrome-extension://${extId}/options/options.html`);
     await p.waitForTimeout(800);
-    const baseUrl = await p.inputValue('#baseUrl');
-    const model = await p.inputValue('#model');
+    const rowCount = await p.locator('.provider-row').count();
     const lang = await p.inputValue('#defaultLang');
+    // 打开新增编辑器，检查默认值
+    await p.click('#addProviderBtn');
+    await p.waitForTimeout(300);
+    const baseUrl = await p.inputValue('#providerBaseUrl');
+    const model = await p.inputValue('#providerModel');
     await p.screenshot({ path: path.join(SHOTS, '02-options.png') });
-    step('设置页渲染且默认值正确', baseUrl === 'https://api.openai.com/v1' && model === 'gpt-4o' && lang === 'zh', `baseUrl=${baseUrl} model=${model} lang=${lang}`);
-    await p.click('#saveBtn');
+    step('设置页渲染且默认值正确', rowCount >= 1 && baseUrl === 'https://api.openai.com/v1' && model === 'gpt-4o' && lang === 'zh', `rows=${rowCount} baseUrl=${baseUrl} model=${model} lang=${lang}`);
+    // 保存一个服务商，检查反馈
+    await p.fill('#providerName', 'E2E');
+    await p.fill('#providerKey', '<redacted>');
+    await p.click('#saveProviderBtn');
     await p.waitForTimeout(500);
     const status = (await p.textContent('#status')) || '';
     step('设置页保存有反馈', status.trim().length > 0, status.trim().slice(0, 50));
@@ -170,8 +177,15 @@ try {
   try {
     const p = await context.newPage();
     await p.goto(`chrome-extension://${extId}/options/options.html`);
-    await p.fill('#apiKey', 'sk-test-invalid-key-12345');
-    await p.click('#saveBtn');
+    // 新增一个无效 Key 的服务商并设为当前（v0.2.0 多服务商结构）
+    await p.click('#addProviderBtn');
+    await p.waitForTimeout(300);
+    await p.fill('#providerName', 'E2E-Bad');
+    await p.fill('#providerKey', 'sk-test-invalid-key-12345');
+    await p.click('#saveProviderBtn');
+    await p.waitForTimeout(500);
+    const rows = p.locator('.provider-row');
+    await rows.nth(await rows.count() - 1).locator('input[type=radio]').check();
     await p.waitForTimeout(500);
     await p.close();
 
