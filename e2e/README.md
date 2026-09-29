@@ -8,8 +8,10 @@
 
 ## 前置条件
 
-1. 先构建扩展：`npm run build`
-2. 安装 `playwright-core`（仓库未收录，运行前需自行安装）：`npm i -D playwright-core`
+1. 先构建扩展：`npm run build:e2e`（E2E 专用构建，service worker 会暴露
+   `__img2promptE2E` 测试钩子；**生产构建 `npm run build` 不含该钩子**，
+   上架包不受影响）
+2. 已收录为 devDependency：`npm install` 即可（`playwright-core`）
 3. 需要一个 Chromium 可执行文件：设置 `E2E_CHROME`，或放在常见路径
    （`/usr/bin/chromium`、`/Applications/Google Chrome.app/...` 等，脚本会自动探测）
 4. 需要互联网访问（下载 picsum 测试图、请求 api.openai.com）。
@@ -22,9 +24,15 @@
 ## 运行
 
 ```bash
-npm run build
+npm run build:e2e
 node e2e/verify.mjs
 ```
+
+其他脚本（均需先 `npm run build:e2e`）：`verify-shortcut.mjs`（快捷键框选）、
+`verify-v03.mjs`（v0.3 刷新按钮等）、`verify-uifix.mjs` / `verify-uifix2.mjs`（UI 回归）、
+`verify-nvapi.mjs` / `verify-nvapi-v03.mjs`（真实 API，需自备 Key）、
+`verify-audit-popup.mjs`（popup 历史删除/清空确认/storage 自动刷新）。
+`real-user-verify.mjs` 为未完成的原生菜单/真实拖拽验证脚本。
 
 常用环境变量：
 

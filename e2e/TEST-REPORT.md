@@ -170,3 +170,33 @@
 - 刷新按钮真实触发重新生成，新结果措辞不同、同样详细，元信息 caption 同步更新
 - **发现的模型侧现象**：第一次运行中第二次生成陷入复读 loop（"树林道路"重复几十次，1874 字），属 llama-3.2-vision 的随机退化，非产品 bug；已在模板中追加防复读约束（"Never repeat the same phrase; state each detail once"），第二次运行两次生成均连贯无复读
 - Key 仅作进程环境变量一次性使用；**用后请轮换**
+
+## 12. v0.3.0 代码审计回归（2026-09-29）
+
+审计范围：v0.3.0 tag 之后全部改动。修复 2 个 High 竞态（background 取消链路 /
+popup 连续上传）、11 个 Medium、11 个 Low（详见 `docs/AUDIT-v0.3.0.md`）。
+
+### 12.1 质量门禁（全部通过）
+
+| 门禁 | 结果 |
+|---|---|
+| TypeScript 类型检查 | 通过 |
+| ESLint | 通过（中途 1 个 unused eslint-disable warning，已删） |
+| Prettier format check | 通过 |
+| esbuild 构建 | 通过；`build`（生产）经 grep 验证不含 `__img2promptE2E`，`build:e2e` 含 hook |
+| 单元测试 | **102/102**（7 个测试文件，新增 27 个） |
+
+### 12.2 真机 E2E（`npm run build:e2e` + 真实 Chromium）
+
+| 脚本 | 结果 |
+|---|---|
+| `verify.mjs`（主流程） | 14/14 |
+| `verify-shortcut.mjs`（快捷键框选，Pointer Events 改造后） | 4/4 |
+| `verify-v03.mjs`（v0.3 刷新按钮等） | 8/8 |
+| `verify-uifix.mjs`（UI 回归） | 7/7 |
+| `verify-uifix2.mjs`（编辑器内测试连接） | 3/3 |
+| `verify-audit-popup.mjs`（新增：单条删除/清空确认/storage 自动刷新/搜索空状态） | **6/6** |
+
+注：本轮首次跑 `verify.mjs` 时因沙盒 Chromium 未走出口代理导致 `example.com`
+访问失败（`ERR_EMPTY_RESPONSE`），属环境问题；`E2E_PROXY=http://127.0.0.1:18080`
+（经 `e2e/fwd-proxy.mjs` 转发鉴权代理）后 14/14 通过，非产品回归。
