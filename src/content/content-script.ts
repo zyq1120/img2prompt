@@ -410,73 +410,54 @@ function panelTemplate(): string {
   return `
   <style>
     :host { all: initial; }
-    /* —— Apple HIG：Deference（磨砂质感让内容成为主角）、Depth（ layered 阴影）、Clarity（系统字体层级） —— */
+    /* —— 工具风：实色面板 + 细边框 + 小圆角，无磨砂、无渐变 —— */
     .ip-panel {
       position: fixed; right: 20px; bottom: 20px; z-index: 2147483647;
       width: 360px; max-height: 62vh; display: flex; flex-direction: column;
-      background: rgba(255, 255, 255, 0.72);
-      -webkit-backdrop-filter: blur(24px) saturate(180%);
-      backdrop-filter: blur(24px) saturate(180%);
-      color: #000; border-radius: 16px; overflow: hidden;
-      border: 0.5px solid rgba(0, 0, 0, 0.08);
-      box-shadow: 0 24px 64px rgba(0, 0, 0, 0.18), 0 2px 8px rgba(0, 0, 0, 0.08);
+      background: #ffffff; color: #1c1c1e;
+      border: 1px solid rgba(0, 0, 0, 0.14); border-radius: 10px; overflow: hidden;
+      box-shadow: 0 12px 32px rgba(0, 0, 0, 0.16);
       font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display",
         "Helvetica Neue", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", system-ui, sans-serif;
       font-size: 13px; line-height: 1.5;
       -webkit-font-smoothing: antialiased;
-      animation: ip-in 0.28s cubic-bezier(0.32, 0.72, 0.35, 1);
-    }
-    @keyframes ip-in {
-      from { opacity: 0; transform: translateY(10px) scale(0.98); }
-      to { opacity: 1; transform: none; }
     }
     .ip-header {
       display: flex; align-items: center; gap: 8px;
-      padding: 12px 12px 12px 14px;
-      border-bottom: 0.5px solid rgba(60, 60, 67, 0.12);
+      padding: 10px 10px 10px 12px;
+      border-bottom: 1px solid rgba(0, 0, 0, 0.08);
     }
     .ip-logo {
-      width: 24px; height: 24px; flex: none;
+      width: 22px; height: 22px; flex: none;
       display: inline-flex; align-items: center; justify-content: center;
-      border-radius: 7px;
-      background: linear-gradient(135deg, #4da6ff, #007aff);
-      box-shadow: 0 2px 6px rgba(10, 132, 255, 0.35);
+      border-radius: 6px; background: #007aff;
     }
-    .ip-logo svg { width: 14px; height: 14px; fill: #fff; }
-    .ip-title { flex: 1; font-size: 14px; font-weight: 600; letter-spacing: -0.01em; }
-    .ip-lang-label { font-size: 12px; color: #6e6e73; }
-    /* iOS 风格分段控件：灰色轨道 + 滑动白色滑块 */
+    .ip-logo svg { width: 13px; height: 13px; }
+    .ip-title {
+      flex: 1; font-size: 13px; font-weight: 600;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    }
+    /* 语言切换：朴素分段按钮 */
     .ip-lang {
-      position: relative; display: flex; flex: none;
-      background: rgba(120, 120, 128, 0.16);
-      border-radius: 9px; padding: 2px;
+      display: flex; flex: none;
+      border: 1px solid rgba(0, 0, 0, 0.14); border-radius: 6px; overflow: hidden;
     }
-    .ip-lang::before {
-      content: ""; position: absolute; top: 2px; bottom: 2px; left: 2px;
-      width: calc(50% - 2px);
-      background: #fff; border-radius: 7px;
-      box-shadow: 0 1px 4px rgba(0, 0, 0, 0.18);
-      transition: transform 0.25s cubic-bezier(0.32, 0.72, 0.35, 1);
-    }
-    .ip-lang:has(button[data-lang="en"].active)::before { transform: translateX(100%); }
     .ip-lang button {
-      position: relative; z-index: 1; flex: 1;
-      border: 0; background: transparent; color: #3c3c43;
+      border: 0; background: transparent; color: #6e6e73;
       font-size: 12px; font-weight: 500; font-family: inherit;
-      padding: 4px 12px; cursor: pointer; border-radius: 7px;
-      transition: color 0.2s;
+      padding: 4px 10px; cursor: pointer;
     }
-    .ip-lang button.active { color: #000; font-weight: 600; }
+    .ip-lang button + button { border-left: 1px solid rgba(0, 0, 0, 0.1); }
+    .ip-lang button.active { background: rgba(0, 0, 0, 0.07); color: #000; font-weight: 600; }
     .ip-lang button:not(.active):hover { color: #000; }
     .ip-close {
-      width: 26px; height: 26px; flex: none;
+      width: 28px; height: 28px; flex: none;
       display: inline-flex; align-items: center; justify-content: center;
-      border: 0; border-radius: 50%; cursor: pointer;
-      background: rgba(120, 120, 128, 0.16); color: #3c3c43;
-      font-size: 14px; line-height: 1; padding: 0;
-      transition: background 0.15s;
+      border: 0; border-radius: 6px; cursor: pointer;
+      background: transparent; color: #6e6e73;
+      font-size: 16px; line-height: 1; padding: 0;
     }
-    .ip-close:hover { background: rgba(120, 120, 128, 0.28); }
+    .ip-close:hover { background: rgba(0, 0, 0, 0.06); color: #000; }
     .ip-body { padding: 14px; overflow-y: auto; }
     .ip-result {
       margin: 0; font-family: inherit; font-size: 13px; line-height: 1.65;
@@ -490,7 +471,7 @@ function panelTemplate(): string {
     .ip-loading-actions { display: flex; justify-content: center; padding: 4px 0 12px; }
     .ip-spinner {
       width: 18px; height: 18px; border-radius: 50%; flex: none;
-      border: 2px solid rgba(120, 120, 128, 0.2); border-top-color: #007aff;
+      border: 2px solid rgba(0, 0, 0, 0.14); border-top-color: #007aff;
       animation: ip-spin 0.8s linear infinite;
     }
     @keyframes ip-spin { to { transform: rotate(360deg); } }
@@ -500,93 +481,88 @@ function panelTemplate(): string {
     .ip-kv-list { margin-top: 12px; display: flex; flex-direction: column; gap: 6px; }
     .ip-kv {
       display: flex; gap: 8px; font-size: 12px; line-height: 1.5;
-      background: rgba(120, 120, 128, 0.1); border-radius: 8px; padding: 6px 10px;
+      background: rgba(0, 0, 0, 0.04); border-radius: 6px; padding: 6px 10px;
     }
     .ip-kv-label { flex: none; color: #6e6e73; }
     .ip-kv-value { color: #1c1c1e; word-break: break-word; }
     .ip-tags { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
     .ip-tag {
       font-size: 12px; color: #007aff;
-      background: rgba(0, 122, 255, 0.1); border-radius: 20px; padding: 3px 10px;
+      background: rgba(0, 122, 255, 0.08); border-radius: 4px; padding: 3px 8px;
       word-break: break-word;
     }
     .ip-footer {
       padding: 10px 12px;
-      border-top: 0.5px solid rgba(60, 60, 67, 0.12);
+      border-top: 1px solid rgba(0, 0, 0, 0.08);
       display: flex; align-items: center; gap: 8px;
     }
     .ip-template {
       flex: 1; min-width: 0;
       font-family: inherit; font-size: 12px; color: #3c3c43;
-      background: rgba(120, 120, 128, 0.12);
-      border: 0; border-radius: 8px; padding: 7px 8px; cursor: pointer;
+      background: #fff; border: 1px solid rgba(0, 0, 0, 0.14);
+      border-radius: 6px; padding: 6px 8px; cursor: pointer;
       text-overflow: ellipsis;
     }
     .ip-template:focus-visible { outline: 2px solid #007aff; outline-offset: -2px; }
-    /* 键盘焦点可见：所有交互按钮统一蓝色焦点环（WCAG 2.4.7） */
+    /* 键盘焦点可见（WCAG 2.4.7） */
     .ip-btn:focus-visible, .ip-copy:focus-visible, .ip-refresh:focus-visible,
     .ip-close:focus-visible, .ip-lang button:focus-visible {
       outline: 2px solid #007aff; outline-offset: 2px;
     }
     .ip-btn, .ip-copy {
-      border: 0; border-radius: 10px; cursor: pointer; font-family: inherit;
+      border-radius: 6px; cursor: pointer; font-family: inherit;
       padding: 7px 16px; font-size: 13px; font-weight: 600;
-      transition: filter 0.15s, transform 0.1s;
     }
-    .ip-btn:active, .ip-copy:active:not(:disabled) { transform: scale(0.97); }
-    .ip-btn { background: rgba(120, 120, 128, 0.16); color: #007aff; }
-    .ip-btn:hover { filter: brightness(0.96); }
-    .ip-copy { background: #007aff; color: #fff; box-shadow: 0 2px 8px rgba(0, 122, 255, 0.35); flex: none; }
-    .ip-copy:hover:not(:disabled) { filter: brightness(1.06); }
-    .ip-copy:disabled { opacity: 0.45; cursor: default; box-shadow: none; }
-    /* 刷新按钮：iOS 风格圆形图标按钮 */
+    .ip-btn { background: transparent; border: 1px solid rgba(0, 0, 0, 0.14); color: #007aff; }
+    .ip-btn:hover { background: rgba(0, 0, 0, 0.04); }
+    .ip-copy { background: #007aff; border: 0; color: #fff; flex: none; }
+    .ip-copy:hover:not(:disabled) { filter: brightness(0.94); }
+    .ip-copy:disabled { opacity: 0.45; cursor: default; }
     .ip-refresh {
-      width: 32px; height: 32px; flex: none;
+      width: 30px; height: 30px; flex: none;
       display: inline-flex; align-items: center; justify-content: center;
-      border: 0; border-radius: 50%; cursor: pointer; padding: 0;
-      background: rgba(0, 122, 255, 0.1);
-      transition: background 0.15s, transform 0.1s;
+      border: 1px solid rgba(0, 0, 0, 0.14); border-radius: 6px; cursor: pointer; padding: 0;
+      background: #fff;
     }
-    .ip-refresh svg { width: 17px; height: 17px; fill: #007aff; }
-    .ip-refresh:hover:not(:disabled) { background: rgba(0, 122, 255, 0.18); }
-    .ip-refresh:active:not(:disabled) { transform: scale(0.92); }
+    .ip-refresh svg { width: 15px; height: 15px; fill: #3c3c43; }
+    .ip-refresh:hover:not(:disabled) { background: rgba(0, 0, 0, 0.04); }
     .ip-refresh:disabled { opacity: 0.35; cursor: default; }
     .ip-refresh.spinning svg { animation: ip-spin 0.9s linear infinite; }
-    /* 结果元信息：caption 样式，次要信息不抢戏 */
     .ip-meta {
       margin-top: 10px; font-size: 11px; color: #6e6e73;
       text-align: right; letter-spacing: 0.01em;
     }
-    /* 深色模式：Apple HIG 强调的完整 dark appearance */
+    /* 深色模式 */
     @media (prefers-color-scheme: dark) {
       .ip-panel {
-        background: rgba(28, 28, 30, 0.72);
-        color: #fff;
-        border-color: rgba(255, 255, 255, 0.12);
-        box-shadow: 0 24px 64px rgba(0, 0, 0, 0.5), 0 2px 8px rgba(0, 0, 0, 0.3);
+        background: #1c1c1e; color: #f2f2f7;
+        border-color: rgba(255, 255, 255, 0.14);
+        box-shadow: 0 12px 32px rgba(0, 0, 0, 0.5);
       }
-      .ip-header { border-bottom-color: rgba(84, 84, 88, 0.6); }
-      .ip-lang { background: rgba(255, 255, 255, 0.14); }
-      .ip-lang::before { background: #636366; }
-      .ip-lang button { color: #ebebf5; }
-      .ip-lang button.active { color: #fff; }
+      .ip-header { border-bottom-color: rgba(255, 255, 255, 0.1); }
+      .ip-lang { border-color: rgba(255, 255, 255, 0.16); }
+      .ip-lang button { color: #98989f; }
+      .ip-lang button + button { border-left-color: rgba(255, 255, 255, 0.12); }
+      .ip-lang button.active { background: rgba(255, 255, 255, 0.12); color: #fff; }
       .ip-lang button:not(.active):hover { color: #fff; }
-      .ip-close { background: rgba(255, 255, 255, 0.14); color: #ebebf5; }
-      .ip-close:hover { background: rgba(255, 255, 255, 0.24); }
+      .ip-close { color: #98989f; }
+      .ip-close:hover { background: rgba(255, 255, 255, 0.1); color: #fff; }
       .ip-result { color: #f2f2f7; }
+      .ip-spinner { border-color: rgba(255, 255, 255, 0.16); border-top-color: #0a84ff; }
       .ip-error-msg { color: #ebebf5; }
-      .ip-kv { background: rgba(255, 255, 255, 0.08); }
+      .ip-kv { background: rgba(255, 255, 255, 0.06); }
       .ip-kv-label { color: #98989f; }
       .ip-kv-value { color: #f2f2f7; }
-      .ip-tag { color: #0a84ff; background: rgba(10, 132, 255, 0.16); }
-      .ip-template { background: rgba(255, 255, 255, 0.12); color: #ebebf5; }
+      .ip-tag { color: #0a84ff; background: rgba(10, 132, 255, 0.12); }
+      .ip-template { background: #1c1c1e; border-color: rgba(255, 255, 255, 0.16); color: #ebebf5; }
       .ip-template option { color: #000; }
-      .ip-footer { border-top-color: rgba(84, 84, 88, 0.6); }
-      .ip-btn { background: rgba(255, 255, 255, 0.14); color: #0a84ff; }
+      .ip-footer { border-top-color: rgba(255, 255, 255, 0.1); }
+      .ip-btn { border-color: rgba(255, 255, 255, 0.16); color: #0a84ff; }
+      .ip-btn:hover { background: rgba(255, 255, 255, 0.06); }
       .ip-copy { background: #0a84ff; }
-      .ip-refresh { background: rgba(10, 132, 255, 0.16); }
-      .ip-refresh svg { fill: #0a84ff; }
-      .ip-refresh:hover:not(:disabled) { background: rgba(10, 132, 255, 0.26); }
+      .ip-refresh { background: #1c1c1e; border-color: rgba(255, 255, 255, 0.16); }
+      .ip-refresh svg { fill: #ebebf5; }
+      .ip-refresh:hover:not(:disabled) { background: rgba(255, 255, 255, 0.06); }
       .ip-meta { color: #98989f; }
       .ip-btn:focus-visible, .ip-copy:focus-visible, .ip-refresh:focus-visible,
       .ip-close:focus-visible, .ip-lang button:focus-visible {
@@ -594,19 +570,16 @@ function panelTemplate(): string {
       }
     }
     @media (prefers-reduced-motion: reduce) {
-      .ip-panel { animation: none; }
       .ip-spinner { animation-duration: 1.6s; }
       .ip-refresh.spinning svg { animation: none; }
-      .ip-lang::before { transition: none; }
     }
   </style>
   <div class="ip-panel">
     <div class="ip-header">
       <span class="ip-logo" aria-hidden="true">
-        <svg viewBox="0 0 24 24"><path d="M12 2c.7 4.9 3.3 7.5 8.2 8.2-4.9.7-7.5 3.3-8.2 8.2-.7-4.9-3.3-7.5-8.2-8.2 4.9-.7 7.5-3.3 8.2-8.2z"/><path d="M19 2.5c.3 2 1.3 3 3.3 3.3-2 .3-3 1.3-3.3 3.3-.3-2-1.3-3-3.3-3.3 2-.3 3-1.3 3.3-3.3z" opacity=".85"/></svg>
+        <svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.6" stroke-linecap="round"><path d="M8 3.5H3.5V8M16 3.5h4.5V8M8 20.5H3.5V16M16 20.5h4.5V16"/></svg>
       </span>
       <span class="ip-title" data-i18n="panelTitle"></span>
-      <span class="ip-lang-label" data-i18n="panelLangLabel"></span>
       <div class="ip-lang">
         <button data-lang="zh">中文</button>
         <button data-lang="en">EN</button>

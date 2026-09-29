@@ -68,9 +68,6 @@
   "panelGoSettings": {
     "message": "去设置 API Key"
   },
-  "panelLangLabel": {
-    "message": "语言"
-  },
   "panelLoading": {
     "message": "正在分析图片…"
   },
@@ -78,7 +75,7 @@
     "message": "重试"
   },
   "panelTitle": {
-    "message": "图片提示词"
+    "message": "img2prompt"
   },
   "popupClear": {
     "message": "清空"

@@ -1,4 +1,4 @@
-/* 设置页：macOS「设置」式分组卡片风格，完整深色模式 */
+/* 设置页：工具风 —— 实色卡片 + 细边框 + 小圆角，无渐变 */
 * {
   box-sizing: border-box;
 }
@@ -30,21 +30,19 @@ body {
 }
 
 .logo {
-  width: 40px;
-  height: 40px;
+  width: 36px;
+  height: 36px;
   flex: none;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  border-radius: 11px;
-  background: linear-gradient(135deg, #4da6ff, #007aff);
-  box-shadow: 0 4px 12px rgba(10, 132, 255, 0.35);
+  border-radius: 8px;
+  background: #007aff;
 }
 
 .logo svg {
-  width: 22px;
-  height: 22px;
-  fill: #fff;
+  width: 20px;
+  height: 20px;
 }
 
 h1 {
@@ -61,13 +59,13 @@ h1 {
   line-height: 1.6;
 }
 
-/* iOS 分组卡片 */
+/* 分组卡片：实色 + 细边框 */
 .card {
   background: #fff;
-  border-radius: 14px;
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  border-radius: 10px;
   padding: 4px 16px;
   margin-bottom: 20px;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
 }
 
 .card-title {
@@ -104,7 +102,7 @@ h1 {
   font-family: inherit;
   color: inherit;
   border: 0.5px solid rgba(60, 60, 67, 0.18);
-  border-radius: 10px;
+  border-radius: 8px;
   outline: none;
   background: #fff;
   transition:
@@ -307,39 +305,29 @@ button {
   font-size: 15px;
   font-family: inherit;
   font-weight: 600;
-  border-radius: 10px;
+  border-radius: 8px;
   border: 0;
   background: rgba(120, 120, 128, 0.16);
   color: #007aff;
   cursor: pointer;
-  transition:
-    filter 0.15s,
-    transform 0.1s;
 }
 
 button:hover {
   filter: brightness(0.96);
 }
 
-button:active {
-  transform: scale(0.97);
-}
-
 button.primary {
   background: #007aff;
   color: #fff;
-  box-shadow: 0 2px 10px rgba(0, 122, 255, 0.35);
 }
 
 button.primary:hover {
-  filter: brightness(1.06);
+  filter: brightness(0.94);
 }
 
 button:disabled {
   opacity: 0.5;
   cursor: default;
-  box-shadow: none;
-  transform: none;
 }
 
 .status {
@@ -368,7 +356,7 @@ button:disabled {
 
   .card {
     background: #1c1c1e;
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.4);
+    border-color: rgba(255, 255, 255, 0.1);
   }
 
   .card-title {

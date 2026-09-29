@@ -68,9 +68,6 @@
   "panelGoSettings": {
     "message": "Set up API Key"
   },
-  "panelLangLabel": {
-    "message": "Language"
-  },
   "panelLoading": {
     "message": "Analyzing image…"
   },
@@ -78,7 +75,7 @@
     "message": "Retry"
   },
   "panelTitle": {
-    "message": "Image Prompt"
+    "message": "img2prompt"
   },
   "popupClear": {
     "message": "Clear"

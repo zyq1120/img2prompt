@@ -393,7 +393,7 @@ function createItemElement(item: HistoryItem): HTMLElement {
   deleteBtn.setAttribute('data-i18n-title', 'popupDeleteRecord');
   deleteBtn.title = t('popupDeleteRecord');
   deleteBtn.setAttribute('aria-label', t('popupDeleteRecord'));
-  deleteBtn.textContent = '🗑';
+  deleteBtn.textContent = '×';
   deleteBtn.addEventListener('click', async (event) => {
     event.stopPropagation();
     if (!window.confirm(t('popupConfirmDeleteRecord'))) {
