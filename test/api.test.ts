@@ -3,7 +3,9 @@ import {
   VisionApiError,
   fetchImageAsDataUrl,
   generateImagePrompt,
+  isInsecureBaseUrl,
   joinUrl,
+  parseJsonResponse,
   parseStructuredPrompt,
   testConnection,
 } from '../src/lib/api.js';
@@ -270,8 +272,132 @@ describe('fetchImageAsDataUrl', () => {
 
   it('图片解码失败时抛出用户可读错误', async () => {
     vi.mocked(fetch).mockResolvedValue({ ok: true, blob: async () => new Blob() } as Response);
-    vi.stubGlobal('createImageBitmap', vi.fn().mockRejectedValue(new Error('decode fail')));
-    await expect(fetchImageAsDataUrl('https://example.com/a.jpg')).rejects.toThrow(/解码失败/);
-    vi.unstubAllGlobals();
+    // 直接挂到 globalThis，finally 里删掉；不碰 vi.unstubAllGlobals（会清掉 setup 的 chrome stub）
+    (globalThis as Record<string, unknown>).createImageBitmap = vi
+      .fn()
+      .mockRejectedValue(new Error('decode fail'));
+    try {
+      await expect(fetchImageAsDataUrl('https://example.com/a.jpg')).rejects.toThrow(/解码失败/);
+    } finally {
+      delete (globalThis as Record<string, unknown>).createImageBitmap;
+    }
+  });
+});
+
+describe('parseJsonResponse', () => {
+  it('合法 JSON 正常解析', async () => {
+    const response = {
+      ok: true,
+      status: 200,
+      json: async () => ({ choices: [] }),
+      text: async () => '{"choices":[]}',
+    } as Response;
+    await expect(parseJsonResponse(response)).resolves.toEqual({ choices: [] });
+  });
+
+  it('HTTP 200 但非 JSON 时提示检查 Base URL 而非报网络错误', async () => {
+    const response = {
+      ok: true,
+      status: 200,
+      json: async () => {
+        throw new SyntaxError('Unexpected token <');
+      },
+      text: async () => '<html>not json</html>',
+    } as unknown as Response;
+    // i18n mock 返回 key 名本身
+    await expect(parseJsonResponse(response)).rejects.toThrow(/apiResponseUnparseable/);
+  });
+
+  it('HTTP 错误状态的 ok 检查在调用方（generateImagePrompt），本函数只处理 200 解析', async () => {
+    // parseJsonResponse 的前置条件是 response.ok；非 ok 由调用方先抛 friendlyHttpError
+    const response = {
+      ok: true,
+      status: 200,
+      json: async () => ({ choices: [{ message: { content: 'hi' } }] }),
+      text: async () => '',
+    } as Response;
+    const data = await parseJsonResponse(response);
+    expect(data.choices?.[0]?.message?.content).toBe('hi');
+  });
+});
+
+describe('isInsecureBaseUrl', () => {
+  it('非本地 http 判定为不安全', () => {
+    expect(isInsecureBaseUrl('http://api.example.com/v1')).toBe(true);
+  });
+  it('https 判定为安全', () => {
+    expect(isInsecureBaseUrl('https://api.example.com/v1')).toBe(false);
+  });
+  it('本地 http 不告警', () => {
+    expect(isInsecureBaseUrl('http://localhost:11434/v1')).toBe(false);
+    expect(isInsecureBaseUrl('http://127.0.0.1:11434/v1')).toBe(false);
+  });
+  it('非法 URL 返回 false（交给表单校验处理）', () => {
+    expect(isInsecureBaseUrl('not-a-url')).toBe(false);
+  });
+});
+
+describe('fetchImageAsDataUrl 大小与取消', () => {
+  const MB = 1024 * 1024;
+
+  it('声明 Content-Length 超 30MB 时直接拒绝', async () => {
+    vi.mocked(fetch).mockResolvedValue({
+      ok: true,
+      headers: new Headers({ 'content-length': String(31 * MB) }),
+      blob: async () => new Blob(),
+    } as Response);
+    await expect(fetchImageAsDataUrl('https://example.com/big.jpg')).rejects.toThrow(
+      /apiImageTooLarge/
+    );
+    // blob() 不应被调用：省一次大下载
+    expect(vi.mocked(fetch)).toHaveBeenCalledTimes(1);
+  });
+
+  it('实际 blob 体积超 30MB 时拒绝', async () => {
+    vi.mocked(fetch).mockResolvedValue({
+      ok: true,
+      headers: new Headers(),
+      blob: async () => ({ size: 31 * MB }) as Blob,
+    } as Response);
+    await expect(fetchImageAsDataUrl('https://example.com/big.jpg')).rejects.toThrow(
+      /apiImageTooLarge/
+    );
+  });
+
+  it('下载中被取消时抛出"已取消"而非网络错误', async () => {
+    vi.mocked(fetch).mockRejectedValue(new DOMException('aborted', 'AbortError'));
+    const controller = new AbortController();
+    await expect(
+      fetchImageAsDataUrl('https://example.com/a.jpg', 1568, { signal: controller.signal })
+    ).rejects.toThrow(/已取消/);
+  });
+
+  it('传入的 signal 会透传给 fetch', async () => {
+    let capturedInit: RequestInit | undefined;
+    vi.mocked(fetch).mockImplementation(async (_url: unknown, init?: RequestInit) => {
+      capturedInit = init;
+      return { ok: false, status: 404 } as Response;
+    });
+    const controller = new AbortController();
+    await expect(
+      fetchImageAsDataUrl('https://example.com/a.jpg', 1568, { signal: controller.signal })
+    ).rejects.toThrow();
+    expect(capturedInit?.signal).toBe(controller.signal);
+  });
+});
+
+describe('testConnection HTTP 状态文案', () => {
+  it('400 提示检查模型配置', async () => {
+    vi.mocked(fetch).mockResolvedValueOnce({ ok: false, status: 400 } as Response);
+    await expect(
+      testConnection({ apiKey: 'sk-test', baseUrl: 'https://api.example.com/v1' })
+    ).rejects.toThrow(/apiHttp400/);
+  });
+
+  it('413 提示图片过大', async () => {
+    vi.mocked(fetch).mockResolvedValueOnce({ ok: false, status: 413 } as Response);
+    await expect(
+      testConnection({ apiKey: 'sk-test', baseUrl: 'https://api.example.com/v1' })
+    ).rejects.toThrow(/apiHttp413/);
   });
 });

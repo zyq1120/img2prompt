@@ -2,9 +2,11 @@ import { describe, expect, it } from 'vitest';
 import {
   addHistoryItem,
   addProvider,
+  cleanApiKey,
   clearHistory,
   defaultProvider,
   deleteCustomTemplate,
+  deleteHistoryItem,
   deleteProvider,
   getActiveProvider,
   getCustomTemplates,
@@ -325,5 +327,68 @@ describe('favorites & search', () => {
     const favs = await searchHistory('', { favoritesOnly: true });
     expect(favs).toHaveLength(1);
     expect(favs[0]!.prompt).toBe('prompt 1');
+  });
+});
+
+describe('deleteHistoryItem', () => {
+  const makeItem = (n: number): Omit<HistoryItem, 'id' | 'createdAt' | 'favorite'> => ({
+    imageUrl: `https://example.com/${n}.png`,
+    source: 'context-menu',
+    thumbnail: 'data:image/jpeg;base64,thumb',
+    prompt: `prompt ${n}`,
+    lang: 'zh',
+    model: 'gpt-4o',
+    providerName: 'Default',
+    templateId: DEFAULT_TEMPLATE_ID,
+  });
+
+  it('按 id 删除单条，其他记录保留', async () => {
+    const first = await addHistoryItem(makeItem(1));
+    await addHistoryItem(makeItem(2));
+    await deleteHistoryItem(first.id);
+    const history = await getHistory();
+    expect(history).toHaveLength(1);
+    expect(history[0]?.prompt).toBe('prompt 2');
+  });
+
+  it('删除不存在的 id 时静默无操作', async () => {
+    await addHistoryItem(makeItem(1));
+    await deleteHistoryItem('no-such-id');
+    expect(await getHistory()).toHaveLength(1);
+  });
+});
+
+describe('cleanApiKey', () => {
+  it('trim 首尾空白', () => {
+    expect(cleanApiKey('  sk-abc123  ')).toBe('sk-abc123');
+  });
+
+  it('剥离换行/制表符（复制粘贴常见污染）', () => {
+    expect(cleanApiKey('sk-abc\n')).toBe('sk-abc');
+    expect(cleanApiKey('sk-\r\nabc')).toBe('sk-abc');
+    expect(cleanApiKey('\tsk-abc\t')).toBe('sk-abc');
+  });
+
+  it('保留 Key 中间的合法字符', () => {
+    expect(cleanApiKey('sk-abc_def.123')).toBe('sk-abc_def.123');
+  });
+
+  it('非字符串返回空串', () => {
+    expect(cleanApiKey(undefined)).toBe('');
+    expect(cleanApiKey(null)).toBe('');
+  });
+});
+
+describe('provider Key 清洗（sanitizeProvider）', () => {
+  it('保存时自动 trim 并去控制字符', async () => {
+    const provider = await addProvider({
+      name: 'Test',
+      apiKey: '  sk-test-key\n',
+      baseUrl: 'https://api.example.com/v1',
+      model: 'gpt-4o',
+    });
+    expect(provider.apiKey).toBe('sk-test-key');
+    const settings = await getSettings();
+    expect(settings.providers.find((p) => p.id === provider.id)?.apiKey).toBe('sk-test-key');
   });
 });
