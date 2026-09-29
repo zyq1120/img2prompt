@@ -1,1 +1,106 @@
-{"appDescription":{"description":"插件简介","message":"右键图片，一键生成 AI 绘画提示词（支持中英切换）"},"appName":{"description":"插件名称","message":"Img2Prompt"},"contextMenuTitle":{"description":"图片右键菜单项","message":"生成图片提示词"},"optionsApiKey":{"message":"API Key"},"optionsApiKeyPh":{"message":"sk-…（仅保存在本地浏览器）"},"optionsBaseUrl":{"message":"Base URL"},"optionsDefaultLang":{"message":"默认语言"},"optionsHint":{"message":"兼容任何 OpenAI-compatible 的 chat completions 接口（含 image_url），如 OpenAI / OpenRouter / Ollama 等。"},"optionsLangEn":{"message":"英文"},"optionsLangZh":{"message":"中文"},"optionsModel":{"message":"模型"},"optionsPageTitle":{"message":"Img2Prompt 设置"},"optionsSave":{"message":"保存"},"optionsSaved":{"message":"已保存"},"optionsTest":{"message":"测试连接"},"optionsTestOk":{"message":"连接成功"},"optionsTesting":{"message":"测试中…"},"panelClose":{"message":"关闭"},"panelCopied":{"message":"已复制"},"panelCopy":{"message":"复制"},"panelErrorTitle":{"message":"生成失败"},"panelGoSettings":{"message":"去设置 API Key"},"panelLangLabel":{"message":"语言"},"panelLoading":{"message":"正在分析图片…"},"panelRetry":{"message":"重试"},"panelTitle":{"message":"图片提示词"},"popupClear":{"message":"清空"},"popupCopied":{"message":"已复制"},"popupEmpty":{"message":"还没有生成记录。在网页图片上右键试试吧。"},"popupOpenOptions":{"message":"设置"},"popupTitle":{"message":"最近生成"}}
+{
+  "appDescription": {
+    "description": "插件简介",
+    "message": "右键图片，一键生成 AI 绘画提示词（支持中英切换）"
+  },
+  "appName": {
+    "description": "插件名称",
+    "message": "Img2Prompt"
+  },
+  "contextMenuTitle": {
+    "description": "图片右键菜单项",
+    "message": "生成图片提示词"
+  },
+  "optionsApiKey": {
+    "message": "API Key"
+  },
+  "optionsApiKeyPh": {
+    "message": "sk-…（仅保存在本地浏览器）"
+  },
+  "optionsBaseUrl": {
+    "message": "Base URL"
+  },
+  "optionsDefaultLang": {
+    "message": "默认语言"
+  },
+  "optionsHint": {
+    "message": "兼容任何 OpenAI-compatible 的 chat completions 接口（含 image_url），如 OpenAI / OpenRouter / Ollama 等。"
+  },
+  "optionsLangEn": {
+    "message": "英文"
+  },
+  "optionsLangZh": {
+    "message": "中文"
+  },
+  "optionsModel": {
+    "message": "模型"
+  },
+  "optionsPageTitle": {
+    "message": "Img2Prompt 设置"
+  },
+  "optionsSave": {
+    "message": "保存"
+  },
+  "optionsSaved": {
+    "message": "已保存"
+  },
+  "optionsTest": {
+    "message": "测试连接"
+  },
+  "optionsTestOk": {
+    "message": "连接成功"
+  },
+  "optionsTesting": {
+    "message": "测试中…"
+  },
+  "panelClose": {
+    "message": "关闭"
+  },
+  "panelCopied": {
+    "message": "已复制"
+  },
+  "panelCopy": {
+    "message": "复制"
+  },
+  "panelErrorTitle": {
+    "message": "生成失败"
+  },
+  "panelGoSettings": {
+    "message": "去设置 API Key"
+  },
+  "panelLangLabel": {
+    "message": "语言"
+  },
+  "panelLoading": {
+    "message": "正在分析图片…"
+  },
+  "panelRetry": {
+    "message": "重试"
+  },
+  "panelTitle": {
+    "message": "图片提示词"
+  },
+  "popupClear": {
+    "message": "清空"
+  },
+  "popupCopied": {
+    "message": "已复制"
+  },
+  "popupEmpty": {
+    "message": "还没有生成记录。在网页图片上右键试试吧。"
+  },
+  "popupOpenOptions": {
+    "message": "设置"
+  },
+  "popupTitle": {
+    "message": "最近生成"
+  },
+  "optionsCardApi": {
+    "message": "API 配置",
+    "description": "设置页：API 分组标题"
+  },
+  "optionsCardGeneral": {
+    "message": "通用",
+    "description": "设置页：通用分组标题"
+  }
+}

@@ -185,64 +185,147 @@ function escapeHtml(raw: string): string {
     .replace(/"/g, '&quot;');
 }
 
-/** 面板 HTML + CSS 模板（样式全部 scoped 在 shadow 内） */
+/** 面板 HTML + CSS 模板（样式全部 scoped 在 shadow 内，遵循 Apple Human Interface Guidelines） */
 function panelTemplate(): string {
   return `
   <style>
     :host { all: initial; }
+    /* —— Apple HIG：Deference（磨砂质感让内容成为主角）、Depth（ layered 阴影）、Clarity（系统字体层级） —— */
     .ip-panel {
       position: fixed; right: 20px; bottom: 20px; z-index: 2147483647;
-      width: 360px; max-height: 60vh; display: flex; flex-direction: column;
-      background: #ffffff; color: #1f2937; border-radius: 12px;
-      box-shadow: 0 12px 40px rgba(0,0,0,.22);
-      font-family: -apple-system, "PingFang SC", "Microsoft YaHei", system-ui, sans-serif;
-      font-size: 13px; overflow: hidden;
+      width: 360px; max-height: 62vh; display: flex; flex-direction: column;
+      background: rgba(255, 255, 255, 0.72);
+      -webkit-backdrop-filter: blur(24px) saturate(180%);
+      backdrop-filter: blur(24px) saturate(180%);
+      color: #000; border-radius: 16px; overflow: hidden;
+      border: 0.5px solid rgba(0, 0, 0, 0.08);
+      box-shadow: 0 24px 64px rgba(0, 0, 0, 0.18), 0 2px 8px rgba(0, 0, 0, 0.08);
+      font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display",
+        "Helvetica Neue", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", system-ui, sans-serif;
+      font-size: 13px; line-height: 1.5;
+      -webkit-font-smoothing: antialiased;
+      animation: ip-in 0.28s cubic-bezier(0.32, 0.72, 0.35, 1);
+    }
+    @keyframes ip-in {
+      from { opacity: 0; transform: translateY(10px) scale(0.98); }
+      to { opacity: 1; transform: none; }
     }
     .ip-header {
       display: flex; align-items: center; gap: 8px;
-      padding: 10px 12px; border-bottom: 1px solid #eef0f3;
-      background: #f8fafc; font-weight: 600;
+      padding: 12px 12px 12px 14px;
+      border-bottom: 0.5px solid rgba(60, 60, 67, 0.12);
     }
-    .ip-title { flex: 1; font-size: 13px; }
-    .ip-lang { display: flex; border: 1px solid #dbe1e8; border-radius: 8px; overflow: hidden; }
+    .ip-logo {
+      width: 24px; height: 24px; flex: none;
+      display: inline-flex; align-items: center; justify-content: center;
+      border-radius: 7px;
+      background: linear-gradient(135deg, #0a84ff, #5e5ce6);
+      box-shadow: 0 2px 6px rgba(10, 132, 255, 0.35);
+    }
+    .ip-logo svg { width: 14px; height: 14px; fill: #fff; }
+    .ip-title { flex: 1; font-size: 14px; font-weight: 600; letter-spacing: -0.01em; }
+    .ip-lang-label { font-size: 12px; color: #8e8e93; }
+    /* iOS 风格分段控件：灰色轨道 + 滑动白色滑块 */
+    .ip-lang {
+      position: relative; display: flex; flex: none;
+      background: rgba(120, 120, 128, 0.16);
+      border-radius: 9px; padding: 2px;
+    }
+    .ip-lang::before {
+      content: ""; position: absolute; top: 2px; bottom: 2px; left: 2px;
+      width: calc(50% - 2px);
+      background: #fff; border-radius: 7px;
+      box-shadow: 0 1px 4px rgba(0, 0, 0, 0.18);
+      transition: transform 0.25s cubic-bezier(0.32, 0.72, 0.35, 1);
+    }
+    .ip-lang:has(button[data-lang="en"].active)::before { transform: translateX(100%); }
     .ip-lang button {
-      border: 0; background: #fff; color: #64748b; font-size: 12px;
-      padding: 4px 10px; cursor: pointer;
+      position: relative; z-index: 1; flex: 1;
+      border: 0; background: transparent; color: #3c3c43;
+      font-size: 12px; font-weight: 500; font-family: inherit;
+      padding: 4px 12px; cursor: pointer; border-radius: 7px;
+      transition: color 0.2s;
     }
-    .ip-lang button.active { background: #4f46e5; color: #fff; }
+    .ip-lang button.active { color: #000; font-weight: 600; }
+    .ip-lang button:not(.active):hover { color: #000; }
     .ip-close {
-      border: 0; background: transparent; font-size: 18px; line-height: 1;
-      color: #94a3b8; cursor: pointer; padding: 2px 6px;
+      width: 26px; height: 26px; flex: none;
+      display: inline-flex; align-items: center; justify-content: center;
+      border: 0; border-radius: 50%; cursor: pointer;
+      background: rgba(120, 120, 128, 0.16); color: #3c3c43;
+      font-size: 14px; line-height: 1; padding: 0;
+      transition: background 0.15s;
     }
-    .ip-close:hover { color: #334155; }
-    .ip-body { padding: 12px; overflow-y: auto; white-space: pre-wrap; }
+    .ip-close:hover { background: rgba(120, 120, 128, 0.28); }
+    .ip-body { padding: 14px; overflow-y: auto; }
     .ip-result {
-      margin: 0; font-family: inherit; font-size: 13px; line-height: 1.7;
-      white-space: pre-wrap; word-break: break-word;
+      margin: 0; font-family: inherit; font-size: 13px; line-height: 1.65;
+      white-space: pre-wrap; word-break: break-word; color: #1c1c1e;
     }
-    .ip-loading { display: flex; align-items: center; gap: 10px; color: #64748b; padding: 18px 4px; }
+    .ip-loading {
+      display: flex; align-items: center; gap: 10px;
+      color: #8e8e93; padding: 20px 4px; font-size: 13px;
+    }
     .ip-spinner {
-      width: 16px; height: 16px; border-radius: 50%;
-      border: 2px solid #e2e8f0; border-top-color: #4f46e5;
-      animation: ip-spin 0.8s linear infinite; flex: none;
+      width: 18px; height: 18px; border-radius: 50%; flex: none;
+      border: 2px solid rgba(120, 120, 128, 0.2); border-top-color: #007aff;
+      animation: ip-spin 0.8s linear infinite;
     }
     @keyframes ip-spin { to { transform: rotate(360deg); } }
-    .ip-error-title { font-weight: 600; color: #dc2626; margin-bottom: 6px; }
-    .ip-error-msg { color: #64748b; line-height: 1.6; margin-bottom: 10px; }
+    .ip-error-title { font-weight: 600; font-size: 14px; color: #ff3b30; margin-bottom: 6px; }
+    .ip-error-msg { color: #3c3c43; line-height: 1.6; margin-bottom: 12px; font-size: 13px; }
     .ip-error-actions { display: flex; gap: 8px; }
-    .ip-footer { padding: 10px 12px; border-top: 1px solid #eef0f3; display: flex; justify-content: flex-end; }
-    .ip-btn, .ip-copy {
-      border: 1px solid #dbe1e8; background: #fff; border-radius: 8px;
-      padding: 6px 14px; font-size: 12px; cursor: pointer; color: #334155;
+    .ip-footer {
+      padding: 10px 12px;
+      border-top: 0.5px solid rgba(60, 60, 67, 0.12);
+      display: flex; justify-content: flex-end;
     }
-    .ip-copy { background: #4f46e5; border-color: #4f46e5; color: #fff; }
-    .ip-copy:disabled { opacity: .45; cursor: default; }
-    .ip-btn:hover, .ip-copy:hover:not(:disabled) { filter: brightness(.96); }
+    .ip-btn, .ip-copy {
+      border: 0; border-radius: 10px; cursor: pointer; font-family: inherit;
+      padding: 7px 16px; font-size: 13px; font-weight: 600;
+      transition: filter 0.15s, transform 0.1s;
+    }
+    .ip-btn:active, .ip-copy:active:not(:disabled) { transform: scale(0.97); }
+    .ip-btn { background: rgba(120, 120, 128, 0.16); color: #007aff; }
+    .ip-btn:hover { filter: brightness(0.96); }
+    .ip-copy { background: #007aff; color: #fff; box-shadow: 0 2px 8px rgba(0, 122, 255, 0.35); }
+    .ip-copy:hover:not(:disabled) { filter: brightness(1.06); }
+    .ip-copy:disabled { opacity: 0.45; cursor: default; box-shadow: none; }
+    /* 深色模式：Apple HIG 强调的完整 dark appearance */
+    @media (prefers-color-scheme: dark) {
+      .ip-panel {
+        background: rgba(28, 28, 30, 0.72);
+        color: #fff;
+        border-color: rgba(255, 255, 255, 0.12);
+        box-shadow: 0 24px 64px rgba(0, 0, 0, 0.5), 0 2px 8px rgba(0, 0, 0, 0.3);
+      }
+      .ip-header { border-bottom-color: rgba(84, 84, 88, 0.6); }
+      .ip-lang { background: rgba(255, 255, 255, 0.14); }
+      .ip-lang::before { background: #636366; }
+      .ip-lang button { color: #ebebf5; }
+      .ip-lang button.active { color: #fff; }
+      .ip-lang button:not(.active):hover { color: #fff; }
+      .ip-close { background: rgba(255, 255, 255, 0.14); color: #ebebf5; }
+      .ip-close:hover { background: rgba(255, 255, 255, 0.24); }
+      .ip-result { color: #f2f2f7; }
+      .ip-error-msg { color: #ebebf5; }
+      .ip-footer { border-top-color: rgba(84, 84, 88, 0.6); }
+      .ip-btn { background: rgba(255, 255, 255, 0.14); color: #0a84ff; }
+      .ip-copy { background: #0a84ff; }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      .ip-panel { animation: none; }
+      .ip-spinner { animation-duration: 1.6s; }
+      .ip-lang::before { transition: none; }
+    }
   </style>
   <div class="ip-panel">
     <div class="ip-header">
+      <span class="ip-logo" aria-hidden="true">
+        <svg viewBox="0 0 24 24"><path d="M12 2c.7 4.9 3.3 7.5 8.2 8.2-4.9.7-7.5 3.3-8.2 8.2-.7-4.9-3.3-7.5-8.2-8.2 4.9-.7 7.5-3.3 8.2-8.2z"/><path d="M19 2.5c.3 2 1.3 3 3.3 3.3-2 .3-3 1.3-3.3 3.3-.3-2-1.3-3-3.3-3.3 2-.3 3-1.3 3.3-3.3z" opacity=".85"/></svg>
+      </span>
       <span class="ip-title" data-i18n="panelTitle"></span>
-      <span style="font-size:12px;color:#94a3b8" data-i18n="panelLangLabel"></span>
+      <span class="ip-lang-label" data-i18n="panelLangLabel"></span>
       <div class="ip-lang">
         <button data-lang="zh">中文</button>
         <button data-lang="en">EN</button>

@@ -1,98 +1,253 @@
+/* 设置页：macOS「设置」式分组卡片风格，完整深色模式 */
 * {
   box-sizing: border-box;
 }
 
 body {
   margin: 0;
-  font-family: -apple-system, 'PingFang SC', 'Microsoft YaHei', system-ui, sans-serif;
-  background: #f6f7f9;
-  color: #1f2937;
+  font-family:
+    -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'SF Pro Display', 'Helvetica Neue',
+    'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', system-ui, sans-serif;
+  font-size: 14px;
+  line-height: 1.5;
+  background: #f2f2f7;
+  color: #000;
+  -webkit-font-smoothing: antialiased;
+  min-height: 100vh;
 }
 
 .options {
-  max-width: 560px;
-  margin: 48px auto;
-  padding: 32px;
-  background: #fff;
-  border-radius: 16px;
-  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.06);
+  max-width: 600px;
+  margin: 0 auto;
+  padding: 56px 24px 64px;
+}
+
+.page-title {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 6px;
+}
+
+.logo {
+  width: 40px;
+  height: 40px;
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 11px;
+  background: linear-gradient(135deg, #0a84ff, #5e5ce6);
+  box-shadow: 0 4px 12px rgba(10, 132, 255, 0.35);
+}
+
+.logo svg {
+  width: 22px;
+  height: 22px;
+  fill: #fff;
 }
 
 h1 {
-  margin: 0 0 8px;
-  font-size: 20px;
+  margin: 0;
+  font-size: 24px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
 }
 
 .hint {
-  margin: 0 0 24px;
-  color: #64748b;
+  margin: 0 0 24px 52px;
+  color: #8e8e93;
   font-size: 13px;
   line-height: 1.6;
 }
 
+/* iOS 分组卡片 */
+.card {
+  background: #fff;
+  border-radius: 14px;
+  padding: 4px 16px;
+  margin-bottom: 20px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+}
+
+.card-title {
+  margin: 0 0 8px 16px;
+  font-size: 13px;
+  font-weight: 400;
+  color: #8e8e93;
+  text-transform: none;
+}
+
 .field {
   display: block;
-  margin-bottom: 16px;
+  padding: 10px 0;
+}
+
+.field + .field {
+  border-top: 0.5px solid rgba(60, 60, 67, 0.12);
 }
 
 .field span {
   display: block;
   margin-bottom: 6px;
   font-size: 13px;
-  font-weight: 600;
+  font-weight: 400;
+  color: #3c3c43;
 }
 
 .field input,
 .field select {
   width: 100%;
-  padding: 10px 12px;
-  font-size: 14px;
-  border: 1px solid #dbe1e8;
-  border-radius: 8px;
+  padding: 9px 12px;
+  font-size: 15px;
+  font-family: inherit;
+  color: inherit;
+  border: 0.5px solid rgba(60, 60, 67, 0.18);
+  border-radius: 10px;
   outline: none;
+  background: #fff;
+  transition:
+    border-color 0.15s,
+    box-shadow 0.15s;
+}
+
+.field input::placeholder {
+  color: #c7c7cc;
 }
 
 .field input:focus,
 .field select:focus {
-  border-color: #4f46e5;
-  box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.12);
+  border-color: #007aff;
+  box-shadow: 0 0 0 4px rgba(0, 122, 255, 0.15);
 }
 
 .actions {
   display: flex;
   align-items: center;
   gap: 12px;
-  margin-top: 24px;
+  margin-top: 4px;
+  padding: 0 16px;
 }
 
 button {
-  padding: 9px 20px;
-  font-size: 14px;
-  border-radius: 8px;
-  border: 1px solid #dbe1e8;
-  background: #fff;
+  padding: 9px 22px;
+  font-size: 15px;
+  font-family: inherit;
+  font-weight: 600;
+  border-radius: 10px;
+  border: 0;
+  background: rgba(120, 120, 128, 0.16);
+  color: #007aff;
   cursor: pointer;
+  transition:
+    filter 0.15s,
+    transform 0.1s;
+}
+
+button:hover {
+  filter: brightness(0.96);
+}
+
+button:active {
+  transform: scale(0.97);
 }
 
 button.primary {
-  background: #4f46e5;
-  border-color: #4f46e5;
+  background: #007aff;
   color: #fff;
+  box-shadow: 0 2px 10px rgba(0, 122, 255, 0.35);
+}
+
+button.primary:hover {
+  filter: brightness(1.06);
 }
 
 button:disabled {
-  opacity: 0.55;
+  opacity: 0.5;
   cursor: default;
+  box-shadow: none;
+  transform: none;
 }
 
 .status {
   font-size: 13px;
+  color: #8e8e93;
 }
 
 .status.ok {
-  color: #16a34a;
+  color: #34c759;
 }
 
 .status.err {
-  color: #dc2626;
+  color: #ff3b30;
+}
+
+/* 深色模式 */
+@media (prefers-color-scheme: dark) {
+  body {
+    background: #000;
+    color: #fff;
+  }
+
+  .hint {
+    color: #98989f;
+  }
+
+  .card {
+    background: #1c1c1e;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.4);
+  }
+
+  .card-title {
+    color: #98989f;
+  }
+
+  .field + .field {
+    border-top-color: rgba(84, 84, 88, 0.6);
+  }
+
+  .field span {
+    color: #ebebf5;
+  }
+
+  .field input,
+  .field select {
+    background: #2c2c2e;
+    border-color: rgba(84, 84, 88, 0.65);
+    color: #fff;
+  }
+
+  .field input::placeholder {
+    color: #636366;
+  }
+
+  .field input:focus,
+  .field select:focus {
+    border-color: #0a84ff;
+    box-shadow: 0 0 0 4px rgba(10, 132, 255, 0.25);
+  }
+
+  button {
+    background: rgba(255, 255, 255, 0.14);
+    color: #0a84ff;
+  }
+
+  button.primary {
+    background: #0a84ff;
+    color: #fff;
+  }
+
+  .status.ok {
+    color: #30d158;
+  }
+
+  .status.err {
+    color: #ff453a;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  button {
+    transition: none;
+  }
 }
