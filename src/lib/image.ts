@@ -10,12 +10,16 @@ export const THUMBNAIL_EDGE_PX = 160;
 /** 压缩为 JPEG 时的质量 */
 export const JPEG_QUALITY = 0.85;
 
+/** 上传文件体积上限：20MB，超过直接拒绝，避免大图全量解码时卡死页面 */
+export const MAX_UPLOAD_BYTES = 20 * 1024 * 1024;
+
 /**
  * 把图片文件（拖拽/选择上传）读取并压缩为 JPEG dataURL。
  *
  * @param file 图片 Blob（拖拽文件或 <input type=file> 结果）
  * @param maxEdgePx 长边上限，默认 1568
- * @throws 非图片类型或读取失败时抛出 Error（调用方转为用户可读文案）
+ * @throws 非图片类型抛 'not-an-image'；超 20MB 抛 'file-too-large'；
+ *   其他读取失败抛对应 code（调用方转为用户可读文案）
  */
 export async function fileToCompressedDataUrl(
   file: Blob,
@@ -23,6 +27,9 @@ export async function fileToCompressedDataUrl(
 ): Promise<string> {
   if (!file.type.startsWith('image/')) {
     throw new Error('not-an-image');
+  }
+  if (file.size > MAX_UPLOAD_BYTES) {
+    throw new Error('file-too-large');
   }
   const bitmap = await createImageBitmap(file);
   try {

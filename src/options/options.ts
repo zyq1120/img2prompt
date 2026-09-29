@@ -2,10 +2,11 @@
  * 设置页逻辑：多服务商管理、提示词模板管理、通用设置。
  * API Key 仅写入 chrome.storage.local，不做任何网络上报。
  */
-import { VisionApiError, testConnection } from '../lib/api.js';
+import { VisionApiError, isInsecureBaseUrl, testConnection } from '../lib/api.js';
 import { applyI18n, t } from '../lib/i18n.js';
 import {
   addProvider,
+  cleanApiKey,
   deleteCustomTemplate,
   deleteProvider,
   getActiveProvider,
@@ -16,6 +17,7 @@ import {
   setActiveProvider,
   updateProvider,
 } from '../lib/storage.js';
+import { truncate } from '../lib/text.js';
 import type {
   OutputFormat,
   PluginSettings,
@@ -123,12 +125,38 @@ testDraftBtn.addEventListener('click', () => {
   const draft: ProviderConfig = {
     id: editingProviderId ?? 'draft',
     name: providerNameInput.value.trim() || t('optionsDraftProvider'),
-    apiKey: providerKeyInput.value,
+    apiKey: cleanApiKey(providerKeyInput.value),
     baseUrl: providerBaseUrlInput.value.trim(),
     model: providerModelInput.value.trim(),
   };
   void testProvider(draft, testDraftBtn);
 });
+
+/** 校验服务商表单：名称/Base URL/模型均必填，Base URL 需合法 */
+function validateProviderForm(draft: {
+  name: string;
+  baseUrl: string;
+  model: string;
+}): string | null {
+  if (!draft.name.trim()) {
+    return t('optionsProviderNameRequired');
+  }
+  if (!draft.baseUrl.trim()) {
+    return t('optionsProviderBaseUrlRequired');
+  }
+  try {
+    const url = new URL(draft.baseUrl.trim());
+    if (url.protocol !== 'http:' && url.protocol !== 'https:') {
+      return t('optionsProviderBaseUrlInvalid');
+    }
+  } catch {
+    return t('optionsProviderBaseUrlInvalid');
+  }
+  if (!draft.model.trim()) {
+    return t('optionsProviderModelRequired');
+  }
+  return null;
+}
 
 saveProviderBtn.addEventListener('click', async () => {
   const draft = {
@@ -137,8 +165,9 @@ saveProviderBtn.addEventListener('click', async () => {
     baseUrl: providerBaseUrlInput.value,
     model: providerModelInput.value,
   };
-  if (!draft.name.trim()) {
-    showStatus(t('optionsProviderNameRequired'), false);
+  const formError = validateProviderForm(draft);
+  if (formError) {
+    showStatus(formError, false);
     return;
   }
   if (editingProviderId) {
@@ -246,10 +275,10 @@ function createProviderRow(provider: ProviderConfig, settings: PluginSettings): 
   const actions = document.createElement('div');
   actions.className = 'row-actions';
 
-  const testBtn = document.createElement('button');
-  testBtn.className = 'text-btn';
-  testBtn.textContent = t('optionsTest');
-  testBtn.addEventListener('click', () => void testProvider(provider, testBtn));
+  const rowTestBtn = document.createElement('button');
+  rowTestBtn.className = 'text-btn';
+  rowTestBtn.textContent = t('optionsTest');
+  rowTestBtn.addEventListener('click', () => void testProvider(provider, rowTestBtn));
 
   const editBtn = document.createElement('button');
   editBtn.className = 'text-btn';
@@ -271,12 +300,16 @@ function createProviderRow(provider: ProviderConfig, settings: PluginSettings): 
   deleteBtn.disabled = settings.providers.length <= 1;
   deleteBtn.title = t('optionsDeleteProviderHint');
   deleteBtn.addEventListener('click', async () => {
+    // 不可逆操作（API Key 一并丢失）：先确认
+    if (!window.confirm(t('optionsConfirmDeleteProvider', provider.name))) {
+      return;
+    }
     await deleteProvider(provider.id);
     await refreshAll();
-    showStatus(t('optionsSaved'), true);
+    showStatus(t('optionsDeleted'), true);
   });
 
-  actions.append(testBtn, editBtn, deleteBtn);
+  actions.append(rowTestBtn, editBtn, deleteBtn);
   row.append(info, radioLabel, actions);
   return row;
 }
@@ -287,7 +320,12 @@ async function testProvider(provider: ProviderConfig, btn: HTMLButtonElement): P
   btn.textContent = t('optionsTesting');
   try {
     await testConnection({ apiKey: provider.apiKey, baseUrl: provider.baseUrl });
-    showStatus(`${provider.name}: ${t('optionsTestOk')}`, true);
+    let status = `${provider.name}: ${t('optionsTestOk')}`;
+    // 明文 http + 非本地：连接虽通，但 Key 会裸奔，明确提醒
+    if (isInsecureBaseUrl(provider.baseUrl)) {
+      status += `（${t('optionsInsecureHttpWarning')}）`;
+    }
+    showStatus(status, true);
   } catch (error) {
     showStatus(
       `${provider.name}: ${error instanceof VisionApiError ? error.message : String(error)}`,
@@ -373,9 +411,13 @@ function createTemplateRow(template: PromptTemplate, settings: PluginSettings): 
     deleteBtn.className = 'text-btn danger';
     deleteBtn.textContent = t('optionsDelete');
     deleteBtn.addEventListener('click', async () => {
+      // 不可逆操作（精心编写的 system prompt 永久丢失）：先确认
+      if (!window.confirm(t('optionsConfirmDeleteTemplate', template.name))) {
+        return;
+      }
       await deleteCustomTemplate(template.id);
       await refreshAll();
-      showStatus(t('optionsSaved'), true);
+      showStatus(t('optionsDeleted'), true);
     });
     actions.append(editBtn, deleteBtn);
   }
@@ -396,6 +438,3 @@ function showStatus(message: string, ok: boolean): void {
 }
 
 /** 超长文本截断并追加省略号 */
-function truncate(text: string, maxChars: number): string {
-  return text.length > maxChars ? `${text.slice(0, maxChars)}…` : text;
-}

@@ -282,5 +282,53 @@
   },
   "panelCharsUnit": {
     "message": "字"
+  },
+  "apiImageTooLarge": {
+    "message": "图片过大（超过 30MB），请换一张较小的图片重试"
+  },
+  "apiResponseUnparseable": {
+    "message": "服务器返回了无法解析的响应，请检查 Base URL 是否指向兼容接口"
+  },
+  "apiHttp400": {
+    "message": "请求参数有误（400），请检查模型名称等配置"
+  },
+  "apiHttp413": {
+    "message": "图片过大被服务端拒绝（413），请换小图或调低画质重试"
+  },
+  "optionsDeleted": {
+    "message": "已删除"
+  },
+  "optionsConfirmDeleteProvider": {
+    "message": "确定删除服务商「$1」吗？其 API Key 将一并删除，此操作不可撤销。"
+  },
+  "optionsConfirmDeleteTemplate": {
+    "message": "确定删除模板「$1」吗？此操作不可撤销。"
+  },
+  "optionsProviderBaseUrlRequired": {
+    "message": "请填写 Base URL"
+  },
+  "optionsProviderModelRequired": {
+    "message": "请填写模型名称"
+  },
+  "optionsProviderBaseUrlInvalid": {
+    "message": "Base URL 格式不正确，示例：https://api.openai.com/v1"
+  },
+  "popupDeleteRecord": {
+    "message": "删除"
+  },
+  "popupConfirmDeleteRecord": {
+    "message": "确定删除这条历史记录吗？"
+  },
+  "popupConfirmClearHistory": {
+    "message": "确定清空全部 $1 条非收藏记录吗？此操作不可撤销。"
+  },
+  "popupSearchNoMatch": {
+    "message": "没有匹配「$1」的记录，换个关键词试试"
+  },
+  "popupFileTooLarge": {
+    "message": "文件过大（超过 20MB），请选择更小的图片"
+  },
+  "optionsInsecureHttpWarning": {
+    "message": "注意：Base URL 使用了明文 http（非本地地址），API Key 将以明文传输，建议改用 https"
   }
 }

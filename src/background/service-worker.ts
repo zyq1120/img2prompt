@@ -10,6 +10,7 @@
  * 多服务商：每次生成按设置中的当前服务商解析；面板/popup 可切换。
  */
 import {
+  MAX_IMAGE_EDGE_PX,
   VisionApiError,
   cropScreenshot,
   downscaleDataUrl,
@@ -115,11 +116,16 @@ chrome.runtime.onMessage.addListener((message: ExtensionMessage, sender) => {
   }
   if (message.type === 'IMG2PROMPT_GENERATE') {
     // 面板内的语言/模板切换 / 重试：不写历史，只更新面板
+    // 纵深防御：lang 白名单校验，templateId 必须是非空字符串
+    const lang = message.lang === 'zh' || message.lang === 'en' ? message.lang : undefined;
+    const templateId =
+      typeof message.templateId === 'string' && message.templateId ? message.templateId : undefined;
     void runGeneration({
       tabId,
-      lang: message.lang,
-      templateId: message.templateId,
       saveHistory: false,
+      // exactOptionalPropertyTypes 下不用 undefined 占位，只在合法时传入
+      ...(lang ? { lang } : null),
+      ...(templateId ? { templateId } : null),
     });
   } else if (message.type === 'IMG2PROMPT_CANCEL') {
     cancelGeneration(tabId);
@@ -252,7 +258,9 @@ async function runGeneration(options: RunGenerationOptions): Promise<void> {
     });
 
     if (!imageDataUrl && imageUrl) {
-      imageDataUrl = await fetchImageAsDataUrl(imageUrl);
+      imageDataUrl = await fetchImageAsDataUrl(imageUrl, MAX_IMAGE_EDGE_PX, {
+        signal: abortController.signal,
+      });
       tabImageCache.set(tabId, { imageUrl, imageDataUrl, source });
     } else if (imageDataUrl) {
       tabImageCache.set(tabId, { imageUrl, imageDataUrl, source });
@@ -307,6 +315,11 @@ async function runGeneration(options: RunGenerationOptions): Promise<void> {
       }
     }
   } catch (error) {
+    if (tabAbortControllers.get(tabId) !== abortController) {
+      // 已被同一 tab 的新请求取代：map 里是新请求的控制器，静默退出，
+      // 不删除新控制器、不向面板发送任何消息（避免误发 CANCELLED 闪烁）
+      return;
+    }
     if (abortController.signal.aborted && error instanceof VisionApiError) {
       // 用户主动取消：通知面板恢复之前状态，而非展示红色错误
       tabAbortControllers.delete(tabId);
@@ -355,24 +368,31 @@ async function sendToTab(tabId: number, message: ExtensionMessage): Promise<void
  * E2E 验证钩子：自动化测试通过它触发与右键菜单点击完全相同的链路
  * （handleMenuClick → 注入面板 → 下载压缩 → 调模型 → 推送状态）。
  * 生产环境中右键菜单是唯一调用方；该钩子不改变任何生产行为。
+ *
+ * 构建开关：只有 `node scripts/build.mjs --e2e`（npm run build:e2e）会定义
+ * __IMG2PROMPT_E2E__ 为 true；默认生产构建中该分支被 esbuild 直接消除，
+ * 上架包里不存在测试钩子。
  */
-(globalThis as unknown as { __img2promptE2E?: unknown }).__img2promptE2E = {
-  handleMenuClick: (tabId: number, imageUrl: string) => handleMenuClick(tabId, imageUrl),
-  handleRegionDone: (
-    tabId: number,
-    rect: { x: number; y: number; width: number; height: number },
-    devicePixelRatio: number
-  ) => handleRegionDone(tabId, rect, devicePixelRatio),
-  /** E2E 专用：跳过 captureVisibleTab（headless 无手势），直接走裁剪→生成链路 */
-  handleRegionShot: (
-    tabId: number,
-    rect: { x: number; y: number; width: number; height: number },
-    devicePixelRatio: number,
-    screenshotDataUrl: string
-  ) => handleRegionShot(tabId, rect, devicePixelRatio, screenshotDataUrl),
-  cancelGeneration: (tabId: number) => cancelGeneration(tabId),
-  /** E2E 专用：触发与快捷键完全相同的处理函数（headless 无法合成系统级按键） */
-  triggerRegionSelectCommand: () => triggerRegionSelectCommand(),
-};
+declare const __IMG2PROMPT_E2E__: boolean;
+if (__IMG2PROMPT_E2E__) {
+  (globalThis as unknown as { __img2promptE2E?: unknown }).__img2promptE2E = {
+    handleMenuClick: (tabId: number, imageUrl: string) => handleMenuClick(tabId, imageUrl),
+    handleRegionDone: (
+      tabId: number,
+      rect: { x: number; y: number; width: number; height: number },
+      devicePixelRatio: number
+    ) => handleRegionDone(tabId, rect, devicePixelRatio),
+    /** E2E 专用：跳过 captureVisibleTab（headless 无手势），直接走裁剪→生成链路 */
+    handleRegionShot: (
+      tabId: number,
+      rect: { x: number; y: number; width: number; height: number },
+      devicePixelRatio: number,
+      screenshotDataUrl: string
+    ) => handleRegionShot(tabId, rect, devicePixelRatio, screenshotDataUrl),
+    cancelGeneration: (tabId: number) => cancelGeneration(tabId),
+    /** E2E 专用：触发与快捷键完全相同的处理函数（headless 无法合成系统级按键） */
+    triggerRegionSelectCommand: () => triggerRegionSelectCommand(),
+  };
+}
 
 export {};

@@ -41,6 +41,8 @@ export function startRegionSelect(callbacks: RegionSelectCallbacks): () => void 
       'background: rgba(0, 0, 0, 0.35)',
       'user-select: none',
       '-webkit-user-select: none',
+      // Pointer Events 统一处理鼠标/触屏/触控笔；none 禁止触屏拖动时页面滚动
+      'touch-action: none',
     ].join(';')
   );
 
@@ -85,6 +87,8 @@ export function startRegionSelect(callbacks: RegionSelectCallbacks): () => void 
   let startX = 0;
   let startY = 0;
   let selecting = false;
+  /** 正在跟踪的 pointerId（多指触控时只跟第一指） */
+  let activePointerId: number | null = null;
 
   const updateBox = (clientX: number, clientY: number): void => {
     const x = Math.min(startX, clientX);
@@ -98,31 +102,13 @@ export function startRegionSelect(callbacks: RegionSelectCallbacks): () => void 
     box.style.height = `${height}px`;
   };
 
-  const onMouseDown = (event: MouseEvent): void => {
-    if (event.button !== 0) {
-      return;
-    }
-    selecting = true;
-    startX = event.clientX;
-    startY = event.clientY;
-    updateBox(event.clientX, event.clientY);
-  };
-
-  const onMouseMove = (event: MouseEvent): void => {
-    if (selecting) {
-      updateBox(event.clientX, event.clientY);
-    }
-  };
-
-  const onMouseUp = (event: MouseEvent): void => {
-    if (!selecting) {
-      return;
-    }
+  const finishSelect = (clientX: number, clientY: number): void => {
     selecting = false;
-    const x = Math.min(startX, event.clientX);
-    const y = Math.min(startY, event.clientY);
-    const width = Math.abs(event.clientX - startX);
-    const height = Math.abs(event.clientY - startY);
+    activePointerId = null;
+    const x = Math.min(startX, clientX);
+    const y = Math.min(startY, clientY);
+    const width = Math.abs(clientX - startX);
+    const height = Math.abs(clientY - startY);
     removeOverlay();
     if (width < MIN_SELECT_SIZE_PX || height < MIN_SELECT_SIZE_PX) {
       callbacks.onCancel();
@@ -131,27 +117,76 @@ export function startRegionSelect(callbacks: RegionSelectCallbacks): () => void 
     callbacks.onDone({ x, y, width, height }, window.devicePixelRatio || 1);
   };
 
+  // Pointer Events 统一处理鼠标/触屏/触控笔；setPointerCapture 保证
+  // 手指/鼠标拖出窗口再松开也能收到 pointerup，overlay 不会卡死
+  const onPointerDown = (event: PointerEvent): void => {
+    if (event.button !== 0 || !event.isPrimary) {
+      return;
+    }
+    event.stopPropagation();
+    event.preventDefault();
+    selecting = true;
+    activePointerId = event.pointerId;
+    startX = event.clientX;
+    startY = event.clientY;
+    try {
+      overlay.setPointerCapture(event.pointerId);
+    } catch {
+      // 个别环境不支持 pointer capture，降级为 window 监听兜底
+    }
+    updateBox(event.clientX, event.clientY);
+  };
+
+  const onPointerMove = (event: PointerEvent): void => {
+    if (selecting && event.pointerId === activePointerId) {
+      updateBox(event.clientX, event.clientY);
+    }
+  };
+
+  const onPointerUp = (event: PointerEvent): void => {
+    if (!selecting || event.pointerId !== activePointerId) {
+      return;
+    }
+    finishSelect(event.clientX, event.clientY);
+  };
+
+  const onPointerCancel = (event: PointerEvent): void => {
+    if (!selecting || event.pointerId !== activePointerId) {
+      return;
+    }
+    selecting = false;
+    activePointerId = null;
+    removeOverlay();
+    callbacks.onCancel();
+  };
+
   const onKeyDown = (event: KeyboardEvent): void => {
     if (event.key === 'Escape') {
+      // 拦住页面自身的 Esc 监听（如关闭弹窗、退出全屏）
+      event.stopPropagation();
+      selecting = false;
+      activePointerId = null;
       removeOverlay();
       callbacks.onCancel();
     }
   };
 
-  // 阻止选区期间页面自身的鼠标/键盘行为
-  const stopPropagation = (event: Event): void => event.stopPropagation();
+  // 阻止选区期间页面自身的点击行为
+  const stopClick = (event: Event): void => event.stopPropagation();
 
-  overlay.addEventListener('mousedown', onMouseDown);
-  window.addEventListener('mousemove', onMouseMove, true);
-  window.addEventListener('mouseup', onMouseUp, true);
+  overlay.addEventListener('pointerdown', onPointerDown);
+  window.addEventListener('pointermove', onPointerMove, true);
+  window.addEventListener('pointerup', onPointerUp, true);
+  window.addEventListener('pointercancel', onPointerCancel, true);
   window.addEventListener('keydown', onKeyDown, true);
-  overlay.addEventListener('click', stopPropagation, true);
-  overlay.addEventListener('dblclick', stopPropagation, true);
+  overlay.addEventListener('click', stopClick, true);
+  overlay.addEventListener('dblclick', stopClick, true);
 
   activeCleanup = () => {
-    overlay.removeEventListener('mousedown', onMouseDown);
-    window.removeEventListener('mousemove', onMouseMove, true);
-    window.removeEventListener('mouseup', onMouseUp, true);
+    overlay.removeEventListener('pointerdown', onPointerDown);
+    window.removeEventListener('pointermove', onPointerMove, true);
+    window.removeEventListener('pointerup', onPointerUp, true);
+    window.removeEventListener('pointercancel', onPointerCancel, true);
     window.removeEventListener('keydown', onKeyDown, true);
     overlay.remove();
   };

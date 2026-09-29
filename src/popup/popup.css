@@ -300,6 +300,35 @@ button.ghost[hidden] {
   color: #ff9f0a;
 }
 
+.delete-btn {
+  flex: none;
+  border: 0;
+  background: transparent;
+  font-size: 14px;
+  color: #c7c7cc;
+  cursor: pointer;
+  padding: 2px 4px;
+  line-height: 1;
+  border-radius: 6px;
+  transition:
+    color 0.15s,
+    transform 0.1s;
+}
+
+.delete-btn:hover {
+  color: #ff3b30;
+  transform: scale(1.15);
+}
+
+.delete-btn:focus-visible {
+  outline: 2px solid #007aff;
+  outline-offset: 2px;
+}
+
+.empty-search {
+  color: #6e6e73;
+}
+
 .history-item {
   align-items: center;
 }
@@ -561,6 +590,22 @@ button.ghost[hidden] {
 
   .fav-btn[aria-pressed='true'] {
     color: #ff9f0a;
+  }
+
+  .delete-btn {
+    color: #48484a;
+  }
+
+  .delete-btn:hover {
+    color: #ff453a;
+  }
+
+  .delete-btn:focus-visible {
+    outline-color: #0a84ff;
+  }
+
+  .empty-search {
+    color: #98989d;
   }
 }
 

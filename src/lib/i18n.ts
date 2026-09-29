@@ -18,6 +18,7 @@ export function t(messageName: string, substitutions?: string | string[]): strin
  * - `data-i18n="key"` → textContent
  * - `data-i18n-ph="key"` → placeholder
  * - `data-i18n-title="key"` → title
+ * - `data-i18n-aria-label="key"` → aria-label（无障碍名称，优先级高于 title）
  */
 export function applyI18n(root: ParentNode = document): void {
   root.querySelectorAll<HTMLElement>('[data-i18n]').forEach((el) => {
@@ -36,6 +37,12 @@ export function applyI18n(root: ParentNode = document): void {
     const key = el.getAttribute('data-i18n-title');
     if (key) {
       el.setAttribute('title', t(key));
+    }
+  });
+  root.querySelectorAll<HTMLElement>('[data-i18n-aria-label]').forEach((el) => {
+    const key = el.getAttribute('data-i18n-aria-label');
+    if (key) {
+      el.setAttribute('aria-label', t(key));
     }
   });
 }

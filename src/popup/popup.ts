@@ -7,10 +7,13 @@
  */
 import { applyI18n, t } from '../lib/i18n.js';
 import { THUMBNAIL_EDGE_PX, fileToCompressedDataUrl } from '../lib/image.js';
+import { truncate } from '../lib/text.js';
 import {
   addHistoryItem,
   clearHistory,
+  deleteHistoryItem,
   getActiveProvider,
+  getHistory,
   getSettings,
   getTemplate,
   getTemplates,
@@ -46,6 +49,8 @@ const uploadCancel = document.getElementById('uploadCancel') as HTMLButtonElemen
 const uploadSpinner = document.getElementById('uploadSpinner') as HTMLElement;
 const searchInput = document.getElementById('searchInput') as HTMLInputElement;
 const favFilterBtn = document.getElementById('favFilterBtn') as HTMLButtonElement;
+const emptyDefaultText = document.getElementById('emptyDefaultText') as HTMLElement;
+const emptySearchText = document.getElementById('emptySearchText') as HTMLElement;
 
 let favoritesOnly = false;
 let searchTimer: number | undefined;
@@ -67,11 +72,29 @@ function bindEvents(): void {
     void chrome.runtime.openOptionsPage();
   });
 
+  // options 页改了服务商/模板/历史时，popup 开着也能刷新下拉框与列表
+  chrome.storage.onChanged.addListener((changes) => {
+    if (changes['img2prompt.settings'] || changes['img2prompt.history']) {
+      void renderProviderSelect();
+      void renderTemplateSelect();
+      void renderHistory();
+    }
+  });
+
   setupApiBtn.addEventListener('click', () => {
     void chrome.runtime.openOptionsPage();
   });
 
   clearBtn.addEventListener('click', async () => {
+    // 不可逆操作：先确认，并明确告知作用范围（全部非收藏记录，不只是当前过滤可见的）
+    const history = await getHistory();
+    const count = history.filter((h) => !h.favorite).length;
+    if (count === 0) {
+      return;
+    }
+    if (!window.confirm(t('popupConfirmClearHistory', String(count)))) {
+      return;
+    }
     await clearHistory({ keepFavorites: true });
     await renderHistory();
   });
@@ -242,16 +265,27 @@ async function handleUpload(file: File): Promise<void> {
     }
   } catch (error) {
     if (aborter.signal.aborted) {
-      uploadResult.hidden = true;
+      // 被取消/被新任务取代：只有仍是当前任务时才复位 UI，
+      // 否则新任务的界面会被旧任务的收尾逻辑隐藏
+      if (uploadAborter === aborter) {
+        uploadResult.hidden = true;
+      }
       return;
     }
     uploadText.classList.add('is-error');
-    uploadText.textContent =
-      error instanceof VisionApiError ? error.message : t('popupUploadInvalid');
+    if (error instanceof VisionApiError) {
+      uploadText.textContent = error.message;
+    } else if (error instanceof Error && error.message === 'file-too-large') {
+      uploadText.textContent = t('popupFileTooLarge');
+    } else {
+      uploadText.textContent = t('popupUploadInvalid');
+    }
   } finally {
-    uploadSpinner.hidden = true;
-    uploadCancel.hidden = true;
+    // 只有当前任务才能收尾 UI 并释放 uploadAborter；
+    // 被取代的旧任务静默退出，避免藏掉新任务的 spinner/取消按钮
     if (uploadAborter === aborter) {
+      uploadSpinner.hidden = true;
+      uploadCancel.hidden = true;
       uploadAborter = null;
     }
   }
@@ -267,6 +301,15 @@ async function renderHistory(): Promise<void> {
   emptyEl.hidden = history.length > 0;
   setupApiBtn.hidden = history.length > 0 || !needsSetup;
   clearBtn.hidden = history.length === 0;
+
+  // 区分"无历史"与"搜索无匹配"两种空状态，避免用户误以为记录丢失
+  const searching = searchInput.value.trim() !== '' || favoritesOnly;
+  emptyDefaultText.hidden = searching;
+  emptySearchText.hidden = !searching;
+  if (searching) {
+    emptySearchText.textContent = t('popupSearchNoMatch', searchInput.value.trim() || '★');
+    setupApiBtn.hidden = true;
+  }
 
   for (const item of history) {
     listEl.appendChild(createItemElement(item));
@@ -344,11 +387,22 @@ function createItemElement(item: HistoryItem): HTMLElement {
     }
   });
 
-  wrapper.append(button, favBtn);
-  return wrapper;
-}
+  const deleteBtn = document.createElement('button');
+  deleteBtn.className = 'delete-btn';
+  deleteBtn.type = 'button';
+  deleteBtn.setAttribute('data-i18n-title', 'popupDeleteRecord');
+  deleteBtn.title = t('popupDeleteRecord');
+  deleteBtn.setAttribute('aria-label', t('popupDeleteRecord'));
+  deleteBtn.textContent = '🗑';
+  deleteBtn.addEventListener('click', async (event) => {
+    event.stopPropagation();
+    if (!window.confirm(t('popupConfirmDeleteRecord'))) {
+      return;
+    }
+    await deleteHistoryItem(item.id);
+    await renderHistory();
+  });
 
-/** 超长文本截断并追加省略号 */
-function truncate(text: string, maxChars: number): string {
-  return text.length > maxChars ? `${text.slice(0, maxChars)}…` : text;
+  wrapper.append(button, favBtn, deleteBtn);
+  return wrapper;
 }

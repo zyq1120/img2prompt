@@ -3,9 +3,10 @@
  * _locales / icons（manifest 的 version 从 package.json 注入）。
  *
  * 用法：
- *   node scripts/build.mjs          # 一次性构建
+ *   node scripts/build.mjs          # 一次性构建（生产包，不含 E2E 钩子）
  *   node scripts/build.mjs --watch  # 监听模式（不压缩，方便调试）
  *   node scripts/build.mjs --zip    # 构建后打出 img2prompt-vx.y.z.zip
+ *   node scripts/build.mjs --e2e    # E2E 专用构建（含 __img2promptE2E 钩子，仅测试用）
  */
 import { build, context } from 'esbuild';
 import { execFile } from 'node:child_process';
@@ -20,6 +21,11 @@ const distDir = path.join(root, 'dist');
 const args = new Set(process.argv.slice(2));
 const isWatch = args.has('--watch');
 const wantZip = args.has('--zip');
+/**
+ * E2E 专用构建：service worker 暴露 __img2promptE2E 测试钩子。
+ * 生产构建（默认）不包含该钩子，上架包不受影响。
+ */
+const isE2E = args.has('--e2e');
 
 const pkg = JSON.parse(await readFile(path.join(root, 'package.json'), 'utf8'));
 
@@ -63,6 +69,7 @@ function esbuildOptions(entry) {
     format: entry.format,
     target: 'chrome116',
     logLevel: 'warning',
+    define: { __IMG2PROMPT_E2E__: String(isE2E) },
   };
 }
 

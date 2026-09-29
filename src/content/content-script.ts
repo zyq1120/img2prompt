@@ -36,8 +36,12 @@ let pendingCancel = false;
 /** 上一次成功的结果（取消时恢复用） */
 let lastGoodResult: { text: string; structured: StructuredPrompt | undefined } | null = null;
 
-/** 入口：监听来自 background 的消息 */
-chrome.runtime.onMessage.addListener((message: ExtensionMessage) => {
+declare global {
+  var __img2promptContentScriptInjected: boolean | undefined;
+}
+
+/** 来自 background 的消息入口（具名函数，配合底部注入去重守卫） */
+function handleExtensionMessage(message: ExtensionMessage): void {
   if (message.type === 'IMG2PROMPT_START') {
     lastGoodResult = null;
     pendingCancel = false;
@@ -47,8 +51,17 @@ chrome.runtime.onMessage.addListener((message: ExtensionMessage) => {
   } else if (message.type === 'IMG2PROMPT_PANEL_STATE') {
     if (message.lang) {
       currentLang = message.lang;
+      // 分段控件高亮与实际语言保持同步
+      const shadow = getShadow();
+      if (shadow) {
+        syncLangButtons(shadow);
+      }
     }
-    if (message.state === 'result' && message.text) {
+    if (message.state === 'result') {
+      if (!message.text) {
+        // 防御：空正文的结果不渲染，避免"旧结构化数据 + 空正文"
+        return;
+      }
       currentText = message.text;
       currentStructured = message.structured;
       lastGoodResult = { text: message.text, structured: message.structured };
@@ -75,7 +88,16 @@ chrome.runtime.onMessage.addListener((message: ExtensionMessage) => {
       },
     });
   }
-});
+}
+
+/**
+ * 注入去重：background 每次右键/快捷键都会 executeScript，
+ * 重复执行整个模块会累积顶层 onMessage 监听器。用全局标记保证只注册一次。
+ */
+if (!globalThis.__img2promptContentScriptInjected) {
+  globalThis.__img2promptContentScriptInjected = true;
+  chrome.runtime.onMessage.addListener(handleExtensionMessage);
+}
 
 /** 创建（或复用）面板并显示 */
 function showPanel(): void {
@@ -139,7 +161,7 @@ function setState(state: PanelState, text?: string, error?: string): void {
   }
   if (state === 'loading') {
     body.innerHTML = [
-      `<div class="ip-loading"><span class="ip-spinner"></span><span class="ip-loading-text">${escapeHtml(t('panelLoading'))}</span></div>`,
+      `<div class="ip-loading" role="status"><span class="ip-spinner" aria-hidden="true"></span><span class="ip-loading-text">${escapeHtml(t('panelLoading'))}</span></div>`,
       `<div class="ip-loading-actions"><button class="ip-btn ip-cancel">${escapeHtml(t('panelCancel'))}</button></div>`,
     ].join('');
     shadow.querySelector('.ip-cancel')?.addEventListener('click', cancelGeneration);
@@ -241,11 +263,15 @@ function bindEvents(shadow: ShadowRoot): void {
     const templateId = select.value;
     if (templateId && templateId !== currentTemplateId) {
       currentTemplateId = templateId;
-      // 持久化为默认模板，保持与设置页一致
+      // 持久化为默认模板，保持与设置页一致；存储失败时把下拉框同步回持久化值
       void (async () => {
-        const settings = await getSettings();
-        settings.activeTemplateId = templateId;
-        await saveSettings(settings);
+        try {
+          const settings = await getSettings();
+          settings.activeTemplateId = templateId;
+          await saveSettings(settings);
+        } catch {
+          await syncTemplateSelect();
+        }
       })();
       if (currentState !== 'loading') {
         requestGenerate(currentLang, templateId);
@@ -306,7 +332,10 @@ function requestGenerate(lang: PromptLanguage, templateId: string): void {
 /** 同步语言切换按钮的高亮状态 */
 function syncLangButtons(shadow: ShadowRoot): void {
   shadow.querySelectorAll<HTMLButtonElement>('.ip-lang button').forEach((btn) => {
-    btn.classList.toggle('active', btn.dataset.lang === currentLang);
+    const active = btn.dataset.lang === currentLang;
+    btn.classList.toggle('active', active);
+    // 读屏用户也能感知当前选中的语言
+    btn.setAttribute('aria-pressed', String(active));
   });
 }
 
@@ -415,7 +444,7 @@ function panelTemplate(): string {
     }
     .ip-logo svg { width: 14px; height: 14px; fill: #fff; }
     .ip-title { flex: 1; font-size: 14px; font-weight: 600; letter-spacing: -0.01em; }
-    .ip-lang-label { font-size: 12px; color: #8e8e93; }
+    .ip-lang-label { font-size: 12px; color: #6e6e73; }
     /* iOS 风格分段控件：灰色轨道 + 滑动白色滑块 */
     .ip-lang {
       position: relative; display: flex; flex: none;
@@ -456,7 +485,7 @@ function panelTemplate(): string {
     .ip-result strong { font-weight: 700; }
     .ip-loading {
       display: flex; align-items: center; gap: 10px;
-      color: #8e8e93; padding: 20px 4px 8px; font-size: 13px;
+      color: #6e6e73; padding: 20px 4px 8px; font-size: 13px;
     }
     .ip-loading-actions { display: flex; justify-content: center; padding: 4px 0 12px; }
     .ip-spinner {
@@ -473,7 +502,7 @@ function panelTemplate(): string {
       display: flex; gap: 8px; font-size: 12px; line-height: 1.5;
       background: rgba(120, 120, 128, 0.1); border-radius: 8px; padding: 6px 10px;
     }
-    .ip-kv-label { flex: none; color: #8e8e93; }
+    .ip-kv-label { flex: none; color: #6e6e73; }
     .ip-kv-value { color: #1c1c1e; word-break: break-word; }
     .ip-tags { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
     .ip-tag {
@@ -494,6 +523,11 @@ function panelTemplate(): string {
       text-overflow: ellipsis;
     }
     .ip-template:focus-visible { outline: 2px solid #007aff; outline-offset: -2px; }
+    /* 键盘焦点可见：所有交互按钮统一蓝色焦点环（WCAG 2.4.7） */
+    .ip-btn:focus-visible, .ip-copy:focus-visible, .ip-refresh:focus-visible,
+    .ip-close:focus-visible, .ip-lang button:focus-visible {
+      outline: 2px solid #007aff; outline-offset: 2px;
+    }
     .ip-btn, .ip-copy {
       border: 0; border-radius: 10px; cursor: pointer; font-family: inherit;
       padding: 7px 16px; font-size: 13px; font-weight: 600;
@@ -520,7 +554,7 @@ function panelTemplate(): string {
     .ip-refresh.spinning svg { animation: ip-spin 0.9s linear infinite; }
     /* 结果元信息：caption 样式，次要信息不抢戏 */
     .ip-meta {
-      margin-top: 10px; font-size: 11px; color: #8e8e93;
+      margin-top: 10px; font-size: 11px; color: #6e6e73;
       text-align: right; letter-spacing: 0.01em;
     }
     /* 深色模式：Apple HIG 强调的完整 dark appearance */
@@ -554,6 +588,10 @@ function panelTemplate(): string {
       .ip-refresh svg { fill: #0a84ff; }
       .ip-refresh:hover:not(:disabled) { background: rgba(10, 132, 255, 0.26); }
       .ip-meta { color: #98989f; }
+      .ip-btn:focus-visible, .ip-copy:focus-visible, .ip-refresh:focus-visible,
+      .ip-close:focus-visible, .ip-lang button:focus-visible {
+        outline-color: #0a84ff;
+      }
     }
     @media (prefers-reduced-motion: reduce) {
       .ip-panel { animation: none; }
@@ -573,12 +611,12 @@ function panelTemplate(): string {
         <button data-lang="zh">中文</button>
         <button data-lang="en">EN</button>
       </div>
-      <button class="ip-close" data-i18n-title="panelClose">×</button>
+      <button class="ip-close" data-i18n-title="panelClose" data-i18n-aria-label="panelClose">×</button>
     </div>
-    <div class="ip-body"></div>
+    <div class="ip-body" aria-live="polite"></div>
     <div class="ip-footer">
       <select class="ip-template" data-i18n-title="panelTemplateTitle"></select>
-      <button class="ip-refresh" data-i18n-title="panelRegenerate" disabled aria-label="regenerate">
+      <button class="ip-refresh" data-i18n-title="panelRegenerate" data-i18n-aria-label="panelRegenerate" disabled>
         <svg viewBox="0 0 24 24"><path d="M12 5V1.8L6.8 7 12 12.2V9c3.3 0 6 2.7 6 6s-2.7 6-6 6-6-2.7-6-6H4c0 4.4 3.6 8 8 8s8-3.6 8-8-3.6-8-8-8z"/></svg>
       </button>
       <button class="ip-copy" data-i18n="panelCopy" disabled></button>

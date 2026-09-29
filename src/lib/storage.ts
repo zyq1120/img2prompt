@@ -255,6 +255,15 @@ export async function clearHistory(options: { keepFavorites?: boolean } = {}): P
   await chrome.storage.local.set({ [STORAGE_KEYS.history]: favorites });
 }
 
+/** 删除单条历史记录（按 id） */
+export async function deleteHistoryItem(id: string): Promise<void> {
+  const history = await getHistory();
+  const next = history.filter((h) => h.id !== id);
+  if (next.length !== history.length) {
+    await chrome.storage.local.set({ [STORAGE_KEYS.history]: next });
+  }
+}
+
 /** 清洗设置对象：只保留已知字段并做类型兜底，兼容 v0.1 扁平结构 */
 function sanitizeSettings(raw: Partial<PluginSettings> | undefined): PluginSettings {
   const defaults = defaultSettings();
@@ -298,6 +307,15 @@ function sanitizeSettings(raw: Partial<PluginSettings> | undefined): PluginSetti
 }
 
 /** 清洗单个服务商配置 */
+/**
+ * 清洗 API Key：整体 trim 并剥离 \r\n\t 等控制字符。
+ * Key 本身不含空白；复制粘贴多带空格/换行是高频的 401 误报来源，
+ * 而含 \r\n 时 fetch 会直接抛 TypeError（header 值非法）。
+ */
+export function cleanApiKey(raw: unknown): string {
+  return typeof raw === 'string' ? raw.trim().replace(/[\r\n\t]/g, '') : '';
+}
+
 function sanitizeProvider(raw: Partial<ProviderConfig>): ProviderConfig {
   const defaults = defaultProvider();
   return {
@@ -307,7 +325,7 @@ function sanitizeProvider(raw: Partial<ProviderConfig>): ProviderConfig {
       typeof raw.baseUrl === 'string' && raw.baseUrl.trim()
         ? raw.baseUrl.trim().replace(/\/+$/, '')
         : defaults.baseUrl,
-    apiKey: typeof raw.apiKey === 'string' ? raw.apiKey : '',
+    apiKey: typeof raw.apiKey === 'string' ? cleanApiKey(raw.apiKey) : '',
     model: typeof raw.model === 'string' && raw.model.trim() ? raw.model.trim() : defaults.model,
   };
 }

@@ -16,13 +16,32 @@ import type { OutputFormat, PromptLanguage, PromptTemplate, StructuredPrompt } f
 /** 默认请求超时：60 秒 */
 const DEFAULT_TIMEOUT_MS = 60_000;
 /** 发送给模型的最大图片边长（像素），超出则等比压缩 */
-const MAX_IMAGE_EDGE_PX = 1568;
+export const MAX_IMAGE_EDGE_PX = 1568;
 /** 历史记录缩略图的最大边长（像素） */
 const THUMBNAIL_EDGE_PX = 160;
 /** 压缩为 JPEG 时的质量 */
 const JPEG_QUALITY = 0.85;
 /** 模型最大输出 token 数 */
 const MAX_OUTPUT_TOKENS = 1500;
+/** 图片下载体积上限：30MB，超过直接拒绝，避免 SW 内存尖峰 */
+const MAX_DOWNLOAD_BYTES = 30 * 1024 * 1024;
+
+/**
+ * 判断 Base URL 是否为"非本地的明文 http"。
+ * 此时 API Key 会以明文在网络上传输，调用方应在 UI 层给出警告。
+ */
+export function isInsecureBaseUrl(baseUrl: string): boolean {
+  try {
+    const url = new URL(baseUrl.trim());
+    if (url.protocol !== 'http:') {
+      return false;
+    }
+    const host = url.hostname.toLowerCase();
+    return host !== 'localhost' && host !== '127.0.0.1' && host !== '[::1]';
+  } catch {
+    return false;
+  }
+}
 
 export interface GenerateImagePromptOptions {
   apiKey: string;
@@ -81,6 +100,26 @@ export function joinUrl(baseUrl: string, path: string): string {
  * @throws {VisionApiError} 入参缺失、HTTP 错误、超时、用户取消、网络失败、
  *   模型返回为空或 JSON 解析失败时抛出
  */
+/**
+ * 解析模型服务的 JSON 响应体。
+ * 服务端返回 200 但 body 不是合法 JSON（如网关吐的 HTML 错误页）时，
+ * 给出明确提示而不是误报"网络请求失败"。
+ */
+/**
+ * 解析 HTTP 200 的响应体为 JSON。
+ * 导出以便单测：网关返回 HTML/纯文本时不再误报"网络错误"，
+ * 而是明确提示检查 Base URL / 兼容接口。
+ */
+export async function parseJsonResponse(
+  response: Response
+): Promise<{ choices?: Array<{ message?: { content?: string } }> }> {
+  try {
+    return (await response.json()) as { choices?: Array<{ message?: { content?: string } }> };
+  } catch {
+    throw new VisionApiError(t('apiResponseUnparseable'));
+  }
+}
+
 export async function generateImagePrompt(
   options: GenerateImagePromptOptions
 ): Promise<GenerateResult> {
@@ -138,9 +177,7 @@ export async function generateImagePrompt(
       throw new VisionApiError(friendlyHttpError(response.status), response.status);
     }
 
-    const data = (await response.json()) as {
-      choices?: Array<{ message?: { content?: string } }>;
-    };
+    const data = await parseJsonResponse(response);
     const text = data.choices?.[0]?.message?.content?.trim();
     if (!text) {
       throw new VisionApiError('模型返回内容为空，请重试');
@@ -274,22 +311,40 @@ export async function testConnection(options: ConnectionTestOptions): Promise<tr
  *
  * @param imageUrl 图片地址
  * @param maxEdgePx 长边上限，默认 1568
+ * @param options.signal 外部取消信号（图片下载阶段也可被取消）
  * @returns 压缩后的 `data:image/jpeg;base64,...`
  */
 export async function fetchImageAsDataUrl(
   imageUrl: string,
-  maxEdgePx: number = MAX_IMAGE_EDGE_PX
+  maxEdgePx: number = MAX_IMAGE_EDGE_PX,
+  options: { signal?: AbortSignal } = {}
 ): Promise<string> {
   let blob: Blob;
   try {
-    const response = await fetch(imageUrl);
+    // exactOptionalPropertyTypes 下不能显式传 undefined 的 signal
+    const init: RequestInit = {};
+    if (options.signal) {
+      init.signal = options.signal;
+    }
+    const response = await fetch(imageUrl, init);
     if (!response.ok) {
       throw new VisionApiError(`图片下载失败（HTTP ${response.status}），可能是防盗链`);
     }
+    // headers 可能缺失（如测试 mock）：可选链兜底，缺失时走下载后 blob.size 检查
+    const declaredLength = Number(response.headers?.get('content-length'));
+    if (Number.isFinite(declaredLength) && declaredLength > MAX_DOWNLOAD_BYTES) {
+      throw new VisionApiError(t('apiImageTooLarge'));
+    }
     blob = await response.blob();
+    if (blob.size > MAX_DOWNLOAD_BYTES) {
+      throw new VisionApiError(t('apiImageTooLarge'));
+    }
   } catch (error) {
     if (error instanceof VisionApiError) {
       throw error;
+    }
+    if (error instanceof DOMException && error.name === 'AbortError') {
+      throw new VisionApiError('已取消本次请求');
     }
     throw new VisionApiError('图片下载失败，请检查网络连接后重试');
   }
@@ -328,9 +383,14 @@ export function makeThumbnail(imageUrl: string): Promise<string> {
  * 用于选区截图/本地上传场景生成历史缩略图。
  */
 export async function downscaleDataUrl(dataUrl: string, maxEdgePx: number): Promise<string> {
-  const response = await fetch(dataUrl);
-  const blob = await response.blob();
-  const bitmap = await createImageBitmap(blob);
+  let bitmap: ImageBitmap;
+  try {
+    const response = await fetch(dataUrl);
+    const blob = await response.blob();
+    bitmap = await createImageBitmap(blob);
+  } catch {
+    throw new VisionApiError('图片数据损坏或格式不支持，请重试');
+  }
 
   const scale = Math.min(1, maxEdgePx / Math.max(bitmap.width, bitmap.height));
   const width = Math.max(1, Math.round(bitmap.width * scale));
@@ -358,9 +418,14 @@ export async function cropScreenshot(
   devicePixelRatio: number,
   maxEdgePx: number = MAX_IMAGE_EDGE_PX
 ): Promise<string> {
-  const response = await fetch(screenshotDataUrl);
-  const blob = await response.blob();
-  const bitmap = await createImageBitmap(blob);
+  let bitmap: ImageBitmap;
+  try {
+    const response = await fetch(screenshotDataUrl);
+    const blob = await response.blob();
+    bitmap = await createImageBitmap(blob);
+  } catch {
+    throw new VisionApiError('截图数据损坏，请重新框选');
+  }
 
   const dpr = devicePixelRatio > 0 ? devicePixelRatio : 1;
   const sx = Math.max(0, Math.round(rect.x * dpr));
@@ -398,9 +463,11 @@ function blobToDataUrl(blob: Blob): Promise<string> {
 
 /** 把 HTTP 状态码翻译成用户可读的中文提示 */
 function friendlyHttpError(status: number): string {
+  if (status === 400) return t('apiHttp400');
   if (status === 401) return 'API Key 无效或已过期（401），请检查设置页中的 Key';
   if (status === 403) return '接口拒绝访问（403），请检查 Key 权限或 Base URL';
   if (status === 404) return '接口地址不存在（404），请检查 Base URL 与模型名称';
+  if (status === 413) return t('apiHttp413');
   if (status === 429) return '请求过于频繁（429），请稍后再试';
   if (status >= 500) return `服务端错误（${status}），请稍后重试`;
   return `请求失败（HTTP ${status}），请检查配置后重试`;

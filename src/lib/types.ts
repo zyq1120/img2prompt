@@ -33,7 +33,7 @@ export interface PromptTemplate {
   /**
    * 发给模型的 system 文本，支持占位符：
    * `{outputLanguage}` → Simplified Chinese / English
-   * `{lengthHint}` → 80-200 个汉字 / 60-150 English words
+   * `{lengthHint}` → 150-350 个汉字 / 120-250 English words
    */
   systemPrompt: string;
   /** 中文场景下发给模型的 user 文本（与图片一同发送） */

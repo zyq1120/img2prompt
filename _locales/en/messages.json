@@ -282,5 +282,53 @@
   },
   "panelCharsUnit": {
     "message": "chars"
+  },
+  "apiImageTooLarge": {
+    "message": "Image too large (over 30MB), please try a smaller one"
+  },
+  "apiResponseUnparseable": {
+    "message": "Server returned an unparseable response; check whether the Base URL points to a compatible API"
+  },
+  "apiHttp400": {
+    "message": "Bad request (400); check the model name and other settings"
+  },
+  "apiHttp413": {
+    "message": "Image rejected by server as too large (413); try a smaller image"
+  },
+  "optionsDeleted": {
+    "message": "Deleted"
+  },
+  "optionsConfirmDeleteProvider": {
+    "message": "Delete provider \"$1\"? Its API key will be removed too. This cannot be undone."
+  },
+  "optionsConfirmDeleteTemplate": {
+    "message": "Delete template \"$1\"? This cannot be undone."
+  },
+  "optionsProviderBaseUrlRequired": {
+    "message": "Base URL is required"
+  },
+  "optionsProviderModelRequired": {
+    "message": "Model name is required"
+  },
+  "optionsProviderBaseUrlInvalid": {
+    "message": "Base URL is invalid, e.g. https://api.openai.com/v1"
+  },
+  "popupDeleteRecord": {
+    "message": "Delete"
+  },
+  "popupConfirmDeleteRecord": {
+    "message": "Delete this history record?"
+  },
+  "popupConfirmClearHistory": {
+    "message": "Clear all $1 non-favorite records? This cannot be undone."
+  },
+  "popupSearchNoMatch": {
+    "message": "No records match \"$1\"; try another keyword"
+  },
+  "popupFileTooLarge": {
+    "message": "File too large (over 20MB); please choose a smaller image"
+  },
+  "optionsInsecureHttpWarning": {
+    "message": "Warning: Base URL uses plain http (non-localhost); your API key is sent unencrypted. Prefer https."
   }
 }
