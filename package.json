@@ -32,5 +32,5 @@
     "e2e": "node e2e/verify.mjs"
   },
   "type": "module",
-  "version": "0.2.0"
+  "version": "0.3.0"
 }
