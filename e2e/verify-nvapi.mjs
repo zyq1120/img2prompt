@@ -210,7 +210,7 @@ try {
   await worker.evaluate(async () => {
     await globalThis.__img2promptE2E.triggerRegionSelectCommand();
   });
-  await page.waitForSelector('[data-img2prompt-region-overlay]', { timeout: 15000 });
+  await page.waitForSelector('#img2prompt-region-overlay', { timeout: 15000 });
   step('快捷键链路：触发框选 overlay', true);
   await page.screenshot({ path: path.join(SHOTS, '14b-region-shortcut.png') });
   await page.keyboard.press('Escape'); // 关闭 overlay，避免影响后续步骤
