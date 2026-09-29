@@ -56,8 +56,12 @@ async function waitForPanelResult(page, prevText, stepName, timeout = 120000) {
   try {
     await page.waitForFunction(
       (prev) => {
-        const t = document.querySelector('#img2prompt-panel-root')?.shadowRoot?.querySelector('.ip-result')?.textContent || '';
-        return t.length > 20 && t !== prev;
+        const root = document.querySelector('#img2prompt-panel-root')?.shadowRoot;
+        if (!root || root.querySelector('.ip-loading')) {
+          return false;
+        }
+        const t = root.querySelector('.ip-result')?.textContent || '';
+        return t.length > 0 && t !== prev;
       }, prevText, { timeout }
     );
   } catch (e) {
@@ -233,7 +237,7 @@ try {
         const box = document.querySelector('#uploadResult');
         const spinner = document.querySelector('#uploadSpinner');
         const txt = document.querySelector('#uploadText')?.textContent || '';
-        return box && !box.hidden && spinner?.hidden && txt.length > 10
+        return box && !box.hidden && spinner?.hidden && txt.length > 0
           && !/识别中|Recognizing/.test(txt);
       },
       undefined, { timeout: 120000 }
