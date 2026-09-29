@@ -5,7 +5,7 @@
 
 ## 结论
 
-共发现并修复 **2 个 High（竞态）**、**11 个 Medium**、**6 个 Low**。质量门禁全部通过：
+共发现并修复 **2 个 High（竞态）**、**11 个 Medium**、**11 个 Low**。质量门禁全部通过：
 `typecheck` / `lint` / `format:check` / 单测 **102/102** / 生产构建验证 /
 E2E 真机（真实 Chromium + 打包 dist）**verify 14/14、shortcut 4/4、v03 8/8、uifix 7/7、uifix2 3/3、
 audit-popup 6/6**。
