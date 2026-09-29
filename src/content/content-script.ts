@@ -155,11 +155,13 @@ function setState(state: PanelState, text?: string, error?: string): void {
   if (!shadow) {
     return;
   }
-  const body = shadow.querySelector('.ip-body');
+  const body = shadow.querySelector('.ip-hero');
   if (!body) {
     return;
   }
+  body.classList.toggle('error', state === 'error');
   if (state === 'loading') {
+    shadow.querySelector('.ip-meta')?.remove();
     body.innerHTML = [
       `<div class="ip-loading" role="status"><span class="ip-spinner" aria-hidden="true"></span><span class="ip-loading-text">${escapeHtml(t('panelLoading'))}</span></div>`,
       `<div class="ip-loading-actions"><button class="ip-btn ip-cancel">${escapeHtml(t('panelCancel'))}</button></div>`,
@@ -181,16 +183,15 @@ function setState(state: PanelState, text?: string, error?: string): void {
     refreshBtn?.classList.add('spinning');
     setActionsEnabled(shadow, false);
   } else if (state === 'result') {
-    body.innerHTML = [
-      currentStructured
-        ? renderStructured(currentStructured)
-        : `<pre class="ip-result">${renderRichText(text ?? currentText)}</pre>`,
-      `<div class="ip-meta"></div>`,
-    ].join('');
+    body.innerHTML = currentStructured
+      ? renderStructured(currentStructured)
+      : `<pre class="ip-result">${renderRichText(text ?? currentText)}</pre>`;
+    ensureMeta(shadow);
     shadow.querySelector('.ip-refresh')?.classList.remove('spinning');
     setActionsEnabled(shadow, true);
     void renderResultMeta(shadow);
   } else {
+    shadow.querySelector('.ip-meta')?.remove();
     const goSettings = errorNeedsSettings(error);
     body.innerHTML = [
       `<div class="ip-error-title">${escapeHtml(t('panelErrorTitle'))}</div>`,
@@ -211,6 +212,21 @@ function setState(state: PanelState, text?: string, error?: string): void {
     shadow.querySelector('.ip-refresh')?.classList.remove('spinning');
     setActionsEnabled(shadow, false);
   }
+}
+
+/** 确保 body 下有 meta caption 元素（结果态用），其余状态清空 */
+function ensureMeta(shadow: ShadowRoot): void {
+  const container = shadow.querySelector('.ip-body');
+  if (!container) {
+    return;
+  }
+  let meta = shadow.querySelector('.ip-meta');
+  if (!meta) {
+    meta = document.createElement('div');
+    meta.className = 'ip-meta';
+    container.appendChild(meta);
+  }
+  meta.textContent = '';
 }
 
 /** 渲染结构化 JSON 结果 */
@@ -410,183 +426,185 @@ function panelTemplate(): string {
   return `
   <style>
     :host { all: initial; }
-    /* —— 工具风：实色面板 + 细边框 + 小圆角，无磨砂、无渐变 —— */
+    /* —— 参考有道翻译官结果页：浅蓝 tint 大卡片 + 大圆角 + 亮蓝主色 —— */
     .ip-panel {
       position: fixed; right: 20px; bottom: 20px; z-index: 2147483647;
-      width: 360px; max-height: 62vh; display: flex; flex-direction: column;
-      background: #ffffff; color: #1c1c1e;
-      border: 1px solid rgba(0, 0, 0, 0.14); border-radius: 10px; overflow: hidden;
-      box-shadow: 0 12px 32px rgba(0, 0, 0, 0.16);
+      width: 380px; max-height: 66vh; display: flex; flex-direction: column;
+      background: #ffffff; color: #1a1a1a;
+      border: 1px solid rgba(0, 0, 0, 0.06); border-radius: 20px; overflow: hidden;
+      box-shadow: 0 16px 48px rgba(31, 157, 255, 0.12), 0 4px 16px rgba(0, 0, 0, 0.08);
       font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display",
         "Helvetica Neue", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", system-ui, sans-serif;
-      font-size: 13px; line-height: 1.5;
+      font-size: 14px; line-height: 1.6;
       -webkit-font-smoothing: antialiased;
     }
+    /* 顶栏：× 左，语言切换居中 */
     .ip-header {
-      display: flex; align-items: center; gap: 8px;
-      padding: 10px 10px 10px 12px;
-      border-bottom: 1px solid rgba(0, 0, 0, 0.08);
+      display: flex; align-items: center;
+      padding: 10px 14px;
     }
-    .ip-logo {
-      width: 22px; height: 22px; flex: none;
-      display: inline-flex; align-items: center; justify-content: center;
-      border-radius: 6px; background: #007aff;
-    }
-    .ip-logo svg { width: 13px; height: 13px; }
-    .ip-title {
-      flex: 1; font-size: 13px; font-weight: 600;
-      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-    }
-    /* 语言切换：朴素分段按钮 */
-    .ip-lang {
-      display: flex; flex: none;
-      border: 1px solid rgba(0, 0, 0, 0.14); border-radius: 6px; overflow: hidden;
-    }
-    .ip-lang button {
-      border: 0; background: transparent; color: #6e6e73;
-      font-size: 12px; font-weight: 500; font-family: inherit;
-      padding: 4px 10px; cursor: pointer;
-    }
-    .ip-lang button + button { border-left: 1px solid rgba(0, 0, 0, 0.1); }
-    .ip-lang button.active { background: rgba(0, 0, 0, 0.07); color: #000; font-weight: 600; }
-    .ip-lang button:not(.active):hover { color: #000; }
     .ip-close {
-      width: 28px; height: 28px; flex: none;
+      width: 30px; height: 30px; flex: none;
       display: inline-flex; align-items: center; justify-content: center;
-      border: 0; border-radius: 6px; cursor: pointer;
-      background: transparent; color: #6e6e73;
-      font-size: 16px; line-height: 1; padding: 0;
+      border: 0; border-radius: 50%; cursor: pointer;
+      background: transparent; color: #8e8e93;
+      font-size: 20px; line-height: 1; padding: 0;
     }
-    .ip-close:hover { background: rgba(0, 0, 0, 0.06); color: #000; }
-    .ip-body { padding: 14px; overflow-y: auto; }
+    .ip-close:hover { background: rgba(0, 0, 0, 0.05); color: #1a1a1a; }
+    .ip-lang-wrap { flex: 1; display: flex; justify-content: center; }
+    /* 语言切换：浅蓝 pill，中文 ⇄ EN */
+    .ip-lang {
+      display: flex; align-items: center; gap: 2px;
+      background: #e9f4fe; border-radius: 999px; padding: 3px;
+    }
+    .ip-lang svg { width: 14px; height: 14px; stroke: #1f9dff; flex: none; }
+    .ip-lang button {
+      border: 0; background: transparent; color: #5b6b7c;
+      font-size: 13px; font-weight: 500; font-family: inherit;
+      padding: 5px 14px; cursor: pointer; border-radius: 999px;
+      transition: background 0.15s, color 0.15s;
+    }
+    .ip-lang button.active { background: #fff; color: #1f9dff; font-weight: 700;
+      box-shadow: 0 1px 4px rgba(31, 157, 255, 0.25); }
+    .ip-body { padding: 2px 14px 0; overflow-y: auto; }
+    /* 结果 hero 卡：浅蓝 tint */
+    .ip-hero {
+      background: #eef6ff; border-radius: 16px; padding: 16px;
+    }
+    .ip-hero.error { background: #fef2f2; }
     .ip-result {
-      margin: 0; font-family: inherit; font-size: 13px; line-height: 1.65;
-      white-space: pre-wrap; word-break: break-word; color: #1c1c1e;
+      margin: 0; font-family: inherit; font-size: 14px; line-height: 1.7;
+      white-space: pre-wrap; word-break: break-word; color: #1a1a1a;
     }
     .ip-result strong { font-weight: 700; }
     .ip-loading {
-      display: flex; align-items: center; gap: 10px;
-      color: #6e6e73; padding: 20px 4px 8px; font-size: 13px;
+      display: flex; align-items: center; justify-content: center; gap: 10px;
+      color: #5b6b7c; padding: 26px 8px; font-size: 14px;
     }
-    .ip-loading-actions { display: flex; justify-content: center; padding: 4px 0 12px; }
+    .ip-loading-actions { display: flex; justify-content: center; padding: 0 0 14px; }
     .ip-spinner {
-      width: 18px; height: 18px; border-radius: 50%; flex: none;
-      border: 2px solid rgba(0, 0, 0, 0.14); border-top-color: #007aff;
+      width: 20px; height: 20px; border-radius: 50%; flex: none;
+      border: 2.5px solid rgba(31, 157, 255, 0.2); border-top-color: #1f9dff;
       animation: ip-spin 0.8s linear infinite;
     }
     @keyframes ip-spin { to { transform: rotate(360deg); } }
-    .ip-error-title { font-weight: 600; font-size: 14px; color: #ff3b30; margin-bottom: 6px; }
+    .ip-error-title { font-weight: 700; font-size: 15px; color: #ff3b30; margin-bottom: 6px; }
     .ip-error-msg { color: #3c3c43; line-height: 1.6; margin-bottom: 12px; font-size: 13px; }
     .ip-error-actions { display: flex; gap: 8px; }
-    .ip-kv-list { margin-top: 12px; display: flex; flex-direction: column; gap: 6px; }
+    .ip-kv-list { margin-top: 12px; display: flex; flex-direction: column; gap: 8px; }
     .ip-kv {
-      display: flex; gap: 8px; font-size: 12px; line-height: 1.5;
-      background: rgba(0, 0, 0, 0.04); border-radius: 6px; padding: 6px 10px;
+      display: flex; gap: 8px; font-size: 13px; line-height: 1.5;
+      background: #ffffff; border-radius: 10px; padding: 8px 12px;
     }
-    .ip-kv-label { flex: none; color: #6e6e73; }
-    .ip-kv-value { color: #1c1c1e; word-break: break-word; }
-    .ip-tags { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
+    .ip-kv-label { flex: none; color: #8e8e93; }
+    .ip-kv-value { color: #1a1a1a; word-break: break-word; }
+    .ip-tags { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
     .ip-tag {
-      font-size: 12px; color: #007aff;
-      background: rgba(0, 122, 255, 0.08); border-radius: 4px; padding: 3px 8px;
+      font-size: 12px; color: #1f9dff; font-weight: 500;
+      background: #ffffff; border-radius: 999px; padding: 4px 12px;
       word-break: break-word;
     }
+    /* 元信息 caption */
+    .ip-meta {
+      margin: 10px 4px 0; font-size: 12px; color: #aeaeb2;
+      text-align: right;
+    }
+    /* 底部操作条：模板选择 + 刷新 + 大复制按钮（参考底部搜索条） */
     .ip-footer {
-      padding: 10px 12px;
-      border-top: 1px solid rgba(0, 0, 0, 0.08);
-      display: flex; align-items: center; gap: 8px;
+      padding: 12px 14px 14px;
+      display: flex; align-items: center; gap: 10px;
     }
     .ip-template {
-      flex: 1; min-width: 0;
-      font-family: inherit; font-size: 12px; color: #3c3c43;
-      background: #fff; border: 1px solid rgba(0, 0, 0, 0.14);
-      border-radius: 6px; padding: 6px 8px; cursor: pointer;
+      width: 108px; flex: none;
+      font-family: inherit; font-size: 13px; color: #3c3c43;
+      background: #f2f4f7; border: 0;
+      border-radius: 12px; padding: 10px 8px; cursor: pointer;
       text-overflow: ellipsis;
     }
-    .ip-template:focus-visible { outline: 2px solid #007aff; outline-offset: -2px; }
-    /* 键盘焦点可见（WCAG 2.4.7） */
+    .ip-template:focus-visible { outline: 2px solid #1f9dff; outline-offset: 2px; }
     .ip-btn:focus-visible, .ip-copy:focus-visible, .ip-refresh:focus-visible,
     .ip-close:focus-visible, .ip-lang button:focus-visible {
-      outline: 2px solid #007aff; outline-offset: 2px;
+      outline: 2px solid #1f9dff; outline-offset: 2px;
     }
-    .ip-btn, .ip-copy {
-      border-radius: 6px; cursor: pointer; font-family: inherit;
-      padding: 7px 16px; font-size: 13px; font-weight: 600;
+    .ip-btn {
+      border: 0; border-radius: 12px; cursor: pointer; font-family: inherit;
+      padding: 9px 18px; font-size: 14px; font-weight: 600;
+      background: #e9f4fe; color: #1f9dff;
     }
-    .ip-btn { background: transparent; border: 1px solid rgba(0, 0, 0, 0.14); color: #007aff; }
-    .ip-btn:hover { background: rgba(0, 0, 0, 0.04); }
-    .ip-copy { background: #007aff; border: 0; color: #fff; flex: none; }
-    .ip-copy:hover:not(:disabled) { filter: brightness(0.94); }
-    .ip-copy:disabled { opacity: 0.45; cursor: default; }
+    .ip-btn:hover { background: #dcedfd; }
+    /* 大复制按钮：亮蓝渐变（参考"同意"按钮） */
+    .ip-copy {
+      flex: 1; border: 0; border-radius: 14px; cursor: pointer; font-family: inherit;
+      padding: 11px 16px; font-size: 15px; font-weight: 700; color: #fff;
+      background: linear-gradient(180deg, #3fb9ff, #1e9bf0);
+      box-shadow: 0 4px 12px rgba(31, 157, 255, 0.35);
+    }
+    .ip-copy:hover:not(:disabled) { filter: brightness(1.05); }
+    .ip-copy:disabled { opacity: 0.45; cursor: default; box-shadow: none; }
     .ip-refresh {
-      width: 30px; height: 30px; flex: none;
+      width: 44px; height: 44px; flex: none;
       display: inline-flex; align-items: center; justify-content: center;
-      border: 1px solid rgba(0, 0, 0, 0.14); border-radius: 6px; cursor: pointer; padding: 0;
-      background: #fff;
+      border: 0; border-radius: 14px; cursor: pointer; padding: 0;
+      background: #e9f4fe;
     }
-    .ip-refresh svg { width: 15px; height: 15px; fill: #3c3c43; }
-    .ip-refresh:hover:not(:disabled) { background: rgba(0, 0, 0, 0.04); }
+    .ip-refresh svg { width: 19px; height: 19px; fill: #1f9dff; }
+    .ip-refresh:hover:not(:disabled) { background: #dcedfd; }
     .ip-refresh:disabled { opacity: 0.35; cursor: default; }
     .ip-refresh.spinning svg { animation: ip-spin 0.9s linear infinite; }
-    .ip-meta {
-      margin-top: 10px; font-size: 11px; color: #6e6e73;
-      text-align: right; letter-spacing: 0.01em;
-    }
     /* 深色模式 */
     @media (prefers-color-scheme: dark) {
       .ip-panel {
         background: #1c1c1e; color: #f2f2f7;
-        border-color: rgba(255, 255, 255, 0.14);
-        box-shadow: 0 12px 32px rgba(0, 0, 0, 0.5);
+        border-color: rgba(255, 255, 255, 0.08);
+        box-shadow: 0 16px 48px rgba(0, 0, 0, 0.5);
       }
-      .ip-header { border-bottom-color: rgba(255, 255, 255, 0.1); }
-      .ip-lang { border-color: rgba(255, 255, 255, 0.16); }
-      .ip-lang button { color: #98989f; }
-      .ip-lang button + button { border-left-color: rgba(255, 255, 255, 0.12); }
-      .ip-lang button.active { background: rgba(255, 255, 255, 0.12); color: #fff; }
-      .ip-lang button:not(.active):hover { color: #fff; }
       .ip-close { color: #98989f; }
-      .ip-close:hover { background: rgba(255, 255, 255, 0.1); color: #fff; }
+      .ip-close:hover { background: rgba(255, 255, 255, 0.08); color: #fff; }
+      .ip-lang { background: rgba(31, 157, 255, 0.16); }
+      .ip-lang button { color: #98989f; }
+      .ip-lang button.active { background: #2c2c2e; color: #4fb3ff; box-shadow: none; }
+      .ip-hero { background: rgba(31, 157, 255, 0.1); }
+      .ip-hero.error { background: rgba(255, 69, 58, 0.1); }
       .ip-result { color: #f2f2f7; }
-      .ip-spinner { border-color: rgba(255, 255, 255, 0.16); border-top-color: #0a84ff; }
+      .ip-loading { color: #98989f; }
+      .ip-spinner { border-color: rgba(79, 179, 255, 0.2); border-top-color: #4fb3ff; }
       .ip-error-msg { color: #ebebf5; }
-      .ip-kv { background: rgba(255, 255, 255, 0.06); }
+      .ip-kv { background: #2c2c2e; }
       .ip-kv-label { color: #98989f; }
       .ip-kv-value { color: #f2f2f7; }
-      .ip-tag { color: #0a84ff; background: rgba(10, 132, 255, 0.12); }
-      .ip-template { background: #1c1c1e; border-color: rgba(255, 255, 255, 0.16); color: #ebebf5; }
+      .ip-tag { color: #4fb3ff; background: #2c2c2e; }
+      .ip-meta { color: #636366; }
+      .ip-template { background: #2c2c2e; color: #ebebf5; }
       .ip-template option { color: #000; }
-      .ip-footer { border-top-color: rgba(255, 255, 255, 0.1); }
-      .ip-btn { border-color: rgba(255, 255, 255, 0.16); color: #0a84ff; }
-      .ip-btn:hover { background: rgba(255, 255, 255, 0.06); }
-      .ip-copy { background: #0a84ff; }
-      .ip-refresh { background: #1c1c1e; border-color: rgba(255, 255, 255, 0.16); }
-      .ip-refresh svg { fill: #ebebf5; }
-      .ip-refresh:hover:not(:disabled) { background: rgba(255, 255, 255, 0.06); }
-      .ip-meta { color: #98989f; }
+      .ip-btn { background: rgba(31, 157, 255, 0.16); color: #4fb3ff; }
+      .ip-btn:hover { background: rgba(31, 157, 255, 0.24); }
+      .ip-copy { background: linear-gradient(180deg, #3fa9f5, #1e8fe0); }
+      .ip-refresh { background: rgba(31, 157, 255, 0.16); }
+      .ip-refresh svg { fill: #4fb3ff; }
+      .ip-refresh:hover:not(:disabled) { background: rgba(31, 157, 255, 0.24); }
       .ip-btn:focus-visible, .ip-copy:focus-visible, .ip-refresh:focus-visible,
       .ip-close:focus-visible, .ip-lang button:focus-visible {
-        outline-color: #0a84ff;
+        outline-color: #4fb3ff;
       }
     }
     @media (prefers-reduced-motion: reduce) {
       .ip-spinner { animation-duration: 1.6s; }
       .ip-refresh.spinning svg { animation: none; }
+      .ip-lang button { transition: none; }
     }
   </style>
   <div class="ip-panel">
     <div class="ip-header">
-      <span class="ip-logo" aria-hidden="true">
-        <svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.6" stroke-linecap="round"><path d="M8 3.5H3.5V8M16 3.5h4.5V8M8 20.5H3.5V16M16 20.5h4.5V16"/></svg>
-      </span>
-      <span class="ip-title" data-i18n="panelTitle"></span>
-      <div class="ip-lang">
-        <button data-lang="zh">中文</button>
-        <button data-lang="en">EN</button>
-      </div>
       <button class="ip-close" data-i18n-title="panelClose" data-i18n-aria-label="panelClose">×</button>
+      <div class="ip-lang-wrap">
+        <div class="ip-lang" role="group" data-i18n-aria-label="panelLangLabel">
+          <button data-lang="zh">中文</button>
+          <svg viewBox="0 0 24 24" fill="none" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 8h11l-3-3M17 16H6l3 3"/></svg>
+          <button data-lang="en">EN</button>
+        </div>
+      </div>
     </div>
-    <div class="ip-body" aria-live="polite"></div>
+    <div class="ip-body"><div class="ip-hero" aria-live="polite"></div></div>
     <div class="ip-footer">
       <select class="ip-template" data-i18n-title="panelTemplateTitle"></select>
       <button class="ip-refresh" data-i18n-title="panelRegenerate" data-i18n-aria-label="panelRegenerate" disabled>

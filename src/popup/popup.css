@@ -1,4 +1,4 @@
-/* Popup：工具风 —— 实色 + 细边框 + 小圆角，无磨砂、无渐变 */
+/* Popup：参考有道翻译官 —— 浅蓝 tint + 大圆角 + 亮蓝主色 */
 * {
   box-sizing: border-box;
 }
@@ -12,8 +12,8 @@ body {
     'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', system-ui, sans-serif;
   font-size: 13px;
   line-height: 1.5;
-  color: #1c1c1e;
-  background: #f2f2f7;
+  color: #1a1a1a;
+  background: #f4f7fb;
   display: flex;
   flex-direction: column;
   -webkit-font-smoothing: antialiased;
@@ -23,18 +23,18 @@ body {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 10px 16px;
+  padding: 12px 16px;
   position: sticky;
   top: 0;
   z-index: 1;
-  background: #f2f2f7;
-  border-bottom: 1px solid rgba(0, 0, 0, 0.08);
+  background: #f4f7fb;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.05);
 }
 
 .popup-header h1 {
   margin: 0;
-  font-size: 15px;
-  font-weight: 600;
+  font-size: 17px;
+  font-weight: 700;
   letter-spacing: 0;
 }
 
@@ -47,21 +47,21 @@ body {
 button.ghost {
   border: 0;
   background: transparent;
-  border-radius: 6px;
+  border-radius: 10px;
   font-family: inherit;
-  font-size: 13px;
+  font-size: 14px;
   font-weight: 400;
   padding: 6px 10px;
   cursor: pointer;
-  color: #007aff;
+  color: #1f9dff;
 }
 
 button.ghost:hover {
-  background: rgba(0, 0, 0, 0.05);
+  background: rgba(31, 157, 255, 0.08);
 }
 
 button.ghost:active {
-  background: rgba(0, 0, 0, 0.09);
+  background: rgba(31, 157, 255, 0.14);
 }
 
 button.ghost[hidden] {
@@ -79,30 +79,31 @@ button.ghost[hidden] {
   flex: 1;
   min-width: 0;
   font-family: inherit;
-  font-size: 12px;
+  font-size: 13px;
   color: #3c3c43;
   background: #fff;
-  border: 1px solid rgba(0, 0, 0, 0.12);
-  border-radius: 8px;
-  padding: 7px 8px;
+  border: 0;
+  border-radius: 12px;
+  padding: 9px 10px;
   cursor: pointer;
+  box-shadow: 0 1px 4px rgba(31, 157, 255, 0.08);
   text-overflow: ellipsis;
 }
 
 .pill-select:focus-visible {
-  outline: 2px solid #007aff;
+  outline: 2px solid #1f9dff;
   outline-offset: -2px;
 }
 
-/* 拖拽上传区：中性虚线框，悬停/拖入时才露蓝 */
+/* 拖拽上传区：浅蓝 tint */
 .dropzone {
   margin: 10px 16px 0;
-  border: 1.5px dashed rgba(0, 0, 0, 0.22);
-  border-radius: 10px;
-  background: #fff;
-  color: #6e6e73;
+  border: 1.5px dashed rgba(31, 157, 255, 0.45);
+  border-radius: 16px;
+  background: #e9f4fe;
+  color: #1f9dff;
   font-size: 13px;
-  padding: 14px;
+  padding: 16px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -111,14 +112,12 @@ button.ghost[hidden] {
 }
 
 .dropzone:hover {
-  border-color: rgba(0, 122, 255, 0.6);
-  color: #007aff;
+  background: #dcedfd;
 }
 
 .dropzone.dragover {
-  background: rgba(0, 122, 255, 0.06);
-  border-color: #007aff;
-  color: #007aff;
+  background: #dcedfd;
+  border-color: #1f9dff;
 }
 
 .dropzone-icon {
@@ -130,10 +129,10 @@ button.ghost[hidden] {
 /* 上传结果区 */
 .upload-result {
   margin: 10px 16px 0;
-  background: #fff;
-  border: 1px solid rgba(0, 0, 0, 0.08);
-  border-radius: 10px;
-  padding: 10px;
+  background: #eef6ff;
+  border: 0;
+  border-radius: 16px;
+  padding: 12px;
   display: flex;
   gap: 10px;
   align-items: flex-start;
@@ -148,9 +147,9 @@ button.ghost[hidden] {
   width: 56px;
   height: 56px;
   object-fit: cover;
-  border-radius: 6px;
+  border-radius: 10px;
   flex: none;
-  background: #e5e5ea;
+  background: #dcedfd;
 }
 
 .upload-body {
@@ -195,13 +194,13 @@ button.ghost[hidden] {
 }
 
 .mini-btn.primary {
-  background: #007aff;
-  border-color: #007aff;
+  background: linear-gradient(180deg, #3fb9ff, #1e9bf0);
+  border-color: transparent;
   color: #fff;
 }
 
 .mini-btn.primary:hover {
-  filter: brightness(0.94);
+  filter: brightness(1.05);
 }
 
 .mini-btn[hidden] {
@@ -329,7 +328,7 @@ button.ghost[hidden] {
   padding: 12px 16px 16px;
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 10px;
 }
 
 .history-item {
@@ -337,10 +336,11 @@ button.ghost[hidden] {
   gap: 12px;
   align-items: flex-start;
   text-align: left;
-  border: 1px solid rgba(0, 0, 0, 0.08);
-  border-radius: 10px;
+  border: 0;
+  border-radius: 16px;
   background: #fff;
-  padding: 10px;
+  box-shadow: 0 1px 4px rgba(31, 157, 255, 0.06);
+  padding: 12px;
   cursor: pointer;
   position: relative;
   width: 100%;
@@ -348,11 +348,11 @@ button.ghost[hidden] {
 }
 
 .history-item:hover {
-  border-color: rgba(0, 0, 0, 0.16);
+  background: #fbfdff;
 }
 
 .history-item:active {
-  background: rgba(0, 0, 0, 0.02);
+  background: #f2f8ff;
 }
 
 .thumb {
@@ -389,10 +389,10 @@ button.ghost[hidden] {
 }
 
 .lang-badge {
-  background: rgba(0, 0, 0, 0.06);
-  color: #3c3c43;
-  border-radius: 4px;
-  padding: 1px 7px;
+  background: #e9f4fe;
+  color: #1f9dff;
+  border-radius: 999px;
+  padding: 2px 8px;
   font-size: 11px;
   font-weight: 600;
 }
@@ -424,18 +424,19 @@ button.ghost[hidden] {
 
 .setup-cta {
   margin-top: 16px;
-  background: #007aff;
+  background: linear-gradient(180deg, #3fb9ff, #1e9bf0);
   color: #fff;
   border: 0;
-  border-radius: 8px;
-  padding: 9px 20px;
-  font-size: 14px;
-  font-weight: 600;
+  border-radius: 14px;
+  padding: 11px 24px;
+  font-size: 15px;
+  font-weight: 700;
   cursor: pointer;
+  box-shadow: 0 4px 12px rgba(31, 157, 255, 0.3);
 }
 
 .setup-cta:hover {
-  filter: brightness(0.94);
+  filter: brightness(1.05);
 }
 
 .setup-cta[hidden] {
@@ -455,7 +456,7 @@ button.ghost[hidden] {
   }
 
   button.ghost {
-    color: #0a84ff;
+    color: #4fb3ff;
   }
 
   button.ghost:hover {
@@ -467,16 +468,17 @@ button.ghost[hidden] {
   }
 
   .setup-cta {
-    background: #0a84ff;
+    background: linear-gradient(180deg, #3fa9f5, #1e8fe0);
   }
 
   .history-item {
     background: #1c1c1e;
-    border-color: rgba(255, 255, 255, 0.1);
+    border: 0;
+    box-shadow: none;
   }
 
   .history-item:hover {
-    border-color: rgba(255, 255, 255, 0.2);
+    background: #222224;
   }
 
   .history-item:active {
@@ -492,8 +494,8 @@ button.ghost[hidden] {
   }
 
   .lang-badge {
-    background: rgba(255, 255, 255, 0.1);
-    color: #ebebf5;
+    background: rgba(31, 157, 255, 0.16);
+    color: #4fb3ff;
   }
 
   .copied-tip {
@@ -512,24 +514,24 @@ button.ghost[hidden] {
   }
 
   .dropzone {
-    border-color: rgba(255, 255, 255, 0.22);
-    background: #1c1c1e;
-    color: #98989f;
+    border-color: rgba(79, 179, 255, 0.35);
+    background: rgba(31, 157, 255, 0.08);
+    color: #4fb3ff;
   }
 
   .dropzone:hover,
   .dropzone.dragover {
-    border-color: #0a84ff;
-    color: #0a84ff;
+    border-color: #4fb3ff;
+    color: #4fb3ff;
   }
 
   .dropzone.dragover {
-    background: rgba(10, 132, 255, 0.08);
+    background: rgba(31, 157, 255, 0.14);
   }
 
   .upload-result {
-    background: #1c1c1e;
-    border-color: rgba(255, 255, 255, 0.1);
+    background: rgba(31, 157, 255, 0.08);
+    border: 0;
   }
 
   .upload-thumb {
@@ -547,7 +549,7 @@ button.ghost[hidden] {
   .mini-btn {
     background: #1c1c1e;
     border-color: rgba(255, 255, 255, 0.16);
-    color: #0a84ff;
+    color: #4fb3ff;
   }
 
   .mini-btn:hover {
@@ -555,14 +557,14 @@ button.ghost[hidden] {
   }
 
   .mini-btn.primary {
-    background: #0a84ff;
-    border-color: #0a84ff;
+    background: linear-gradient(180deg, #3fa9f5, #1e8fe0);
+    border-color: transparent;
     color: #fff;
   }
 
   .mini-spinner {
     border-color: rgba(255, 255, 255, 0.16);
-    border-top-color: #0a84ff;
+    border-top-color: #4fb3ff;
   }
 
   .search-input {

@@ -10,8 +10,8 @@ body {
     'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', system-ui, sans-serif;
   font-size: 14px;
   line-height: 1.5;
-  background: #f2f2f7;
-  color: #000;
+  background: #f4f7fb;
+  color: #1a1a1a;
   -webkit-font-smoothing: antialiased;
   min-height: 100vh;
 }
@@ -30,14 +30,15 @@ body {
 }
 
 .logo {
-  width: 36px;
-  height: 36px;
+  width: 38px;
+  height: 38px;
   flex: none;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  border-radius: 8px;
-  background: #007aff;
+  border-radius: 12px;
+  background: linear-gradient(180deg, #3fb9ff, #1e9bf0);
+  box-shadow: 0 4px 12px rgba(31, 157, 255, 0.3);
 }
 
 .logo svg {
@@ -59,11 +60,12 @@ h1 {
   line-height: 1.6;
 }
 
-/* 分组卡片：实色 + 细边框 */
+/* 分组卡片：大圆角 + 柔和阴影 */
 .card {
   background: #fff;
-  border: 1px solid rgba(0, 0, 0, 0.08);
-  border-radius: 10px;
+  border: 0;
+  border-radius: 16px;
+  box-shadow: 0 1px 6px rgba(31, 157, 255, 0.06);
   padding: 4px 16px;
   margin-bottom: 20px;
 }
@@ -102,7 +104,7 @@ h1 {
   font-family: inherit;
   color: inherit;
   border: 0.5px solid rgba(60, 60, 67, 0.18);
-  border-radius: 8px;
+  border-radius: 12px;
   outline: none;
   background: #fff;
   transition:
@@ -152,8 +154,8 @@ h1 {
 .field input:focus,
 .field select:focus,
 .field textarea:focus {
-  border-color: #007aff;
-  box-shadow: 0 0 0 4px rgba(0, 122, 255, 0.15);
+  border-color: #1f9dff;
+  box-shadow: 0 0 0 4px rgba(31, 157, 255, 0.15);
 }
 
 /* 服务商 / 模板列表 */
@@ -204,10 +206,10 @@ h1 {
 .badge {
   font-size: 11px;
   font-weight: 600;
-  border-radius: 6px;
-  padding: 1px 7px;
-  background: rgba(0, 122, 255, 0.12);
-  color: #007aff;
+  border-radius: 999px;
+  padding: 2px 8px;
+  background: #e9f4fe;
+  color: #1f9dff;
 }
 
 .badge.json {
@@ -216,8 +218,8 @@ h1 {
 }
 
 .badge.active {
-  background: rgba(0, 122, 255, 0.12);
-  color: #007aff;
+  background: #e9f4fe;
+  color: #1f9dff;
 }
 
 .row-actions {
@@ -232,10 +234,10 @@ h1 {
   font-family: inherit;
   font-size: 14px;
   font-weight: 400;
-  color: #007aff;
+  color: #1f9dff;
   cursor: pointer;
   padding: 8px 10px;
-  border-radius: 8px;
+  border-radius: 10px;
   transition: background 0.15s;
 }
 
@@ -305,24 +307,25 @@ button {
   font-size: 15px;
   font-family: inherit;
   font-weight: 600;
-  border-radius: 8px;
+  border-radius: 12px;
   border: 0;
-  background: rgba(120, 120, 128, 0.16);
-  color: #007aff;
+  background: #e9f4fe;
+  color: #1f9dff;
   cursor: pointer;
 }
 
 button:hover {
-  filter: brightness(0.96);
+  background: #dcedfd;
 }
 
 button.primary {
-  background: #007aff;
+  background: linear-gradient(180deg, #3fb9ff, #1e9bf0);
   color: #fff;
+  box-shadow: 0 4px 12px rgba(31, 157, 255, 0.3);
 }
 
 button.primary:hover {
-  filter: brightness(0.94);
+  filter: brightness(1.05);
 }
 
 button:disabled {
@@ -405,7 +408,7 @@ button:disabled {
   }
 
   button.primary {
-    background: #0a84ff;
+    background: linear-gradient(180deg, #3fa9f5, #1e8fe0);
     color: #fff;
   }
 
@@ -439,7 +442,7 @@ button:disabled {
   }
 
   .text-btn {
-    color: #0a84ff;
+    color: #4fb3ff;
   }
 
   .text-btn:hover {
