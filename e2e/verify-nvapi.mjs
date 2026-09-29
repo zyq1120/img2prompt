@@ -51,6 +51,25 @@ function step(name, ok, detail = '') {
 const shadowText = (sel) =>
   document.querySelector('#img2prompt-panel-root')?.shadowRoot?.querySelector(sel)?.textContent || '';
 
+/** 等待面板结果文本变化；超时时抓面板状态诊断后抛出 */
+async function waitForPanelResult(page, prevText, stepName, timeout = 120000) {
+  try {
+    await page.waitForFunction(
+      (prev) => {
+        const t = document.querySelector('#img2prompt-panel-root')?.shadowRoot?.querySelector('.ip-result')?.textContent || '';
+        return t.length > 20 && t !== prev;
+      }, prevText, { timeout }
+    );
+  } catch (e) {
+    const body = await page.evaluate(
+      () => document.querySelector('#img2prompt-panel-root')?.shadowRoot?.querySelector('.ip-body')?.textContent || 'no-panel'
+    );
+    await page.screenshot({ path: path.join(SHOTS, `99-fail-${stepName}.png`) });
+    console.log(`[DIAG ${stepName}] panel body: ${body.slice(0, 300)}`);
+    throw e;
+  }
+}
+
 let context, worker, extId;
 try {
   context = await chromium.launchPersistentContext(PROFILE, {
@@ -138,10 +157,7 @@ try {
   await worker.evaluate(async ({ tabId, imageUrl }) => {
     await globalThis.__img2promptE2E.handleMenuClick(tabId, imageUrl);
   }, { tabId, imageUrl: IMAGE_URL });
-  await page.waitForFunction(
-    () => (document.querySelector('#img2prompt-panel-root')?.shadowRoot?.querySelector('.ip-result')?.textContent || '').length > 20,
-    undefined, { timeout: 120000 }
-  );
+  await waitForPanelResult(page, '', 'zh');
   const zhText = await page.evaluate(shadowText, '.ip-result');
   const copyEnabled = await page.evaluate(
     () => !document.querySelector('#img2prompt-panel-root')?.shadowRoot?.querySelector('.ip-copy')?.disabled
@@ -158,12 +174,7 @@ try {
   // ---- 3. EN 切换 ----
   await page.locator('.ip-lang button[data-lang="en"]').click();
   await page.waitForSelector('.ip-loading', { timeout: 20000 });
-  await page.waitForFunction(
-    (prev) => {
-      const t = document.querySelector('#img2prompt-panel-root')?.shadowRoot?.querySelector('.ip-result')?.textContent || '';
-      return t.length > 20 && t !== prev;
-    }, zhText, { timeout: 120000 }
-  );
+  await waitForPanelResult(page, zhText, 'en');
   const enText = await page.evaluate(shadowText, '.ip-result');
   await page.waitForTimeout(600);
   await page.screenshot({ path: path.join(SHOTS, '13-panel-en.png') });
@@ -182,12 +193,7 @@ try {
   await worker.evaluate(async ({ tabId, rect, shotDataUrl }) => {
     await globalThis.__img2promptE2E.handleRegionShot(tabId, rect, 1, shotDataUrl);
   }, { tabId, rect, shotDataUrl });
-  await page.waitForFunction(
-    (prev) => {
-      const t = document.querySelector('#img2prompt-panel-root')?.shadowRoot?.querySelector('.ip-result')?.textContent || '';
-      return t.length > 20 && t !== prev;
-    }, beforeRegion, { timeout: 120000 }
-  );
+  await waitForPanelResult(page, beforeRegion, 'region');
   const regionText = await page.evaluate(shadowText, '.ip-result');
   await page.waitForTimeout(600);
   await page.screenshot({ path: path.join(SHOTS, '14-panel-region.png') });
