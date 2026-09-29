@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   VisionApiError,
+  fetchImageAsDataUrl,
   generateImagePrompt,
   joinUrl,
   parseStructuredPrompt,
@@ -252,5 +253,25 @@ describe('testConnection', () => {
       VisionApiError
     );
     expect(vi.mocked(fetch)).not.toHaveBeenCalled();
+  });
+});
+
+describe('fetchImageAsDataUrl', () => {
+  it('网络异常时抛出用户可读的 VisionApiError', async () => {
+    vi.mocked(fetch).mockRejectedValue(new TypeError('fetch failed'));
+    await expect(fetchImageAsDataUrl('https://example.com/a.jpg')).rejects.toThrow(VisionApiError);
+    await expect(fetchImageAsDataUrl('https://example.com/a.jpg')).rejects.toThrow(/图片下载失败/);
+  });
+
+  it('HTTP 错误状态抛出防盗链提示', async () => {
+    vi.mocked(fetch).mockResolvedValue({ ok: false, status: 403 } as Response);
+    await expect(fetchImageAsDataUrl('https://example.com/a.jpg')).rejects.toThrow(/防盗链/);
+  });
+
+  it('图片解码失败时抛出用户可读错误', async () => {
+    vi.mocked(fetch).mockResolvedValue({ ok: true, blob: async () => new Blob() } as Response);
+    vi.stubGlobal('createImageBitmap', vi.fn().mockRejectedValue(new Error('decode fail')));
+    await expect(fetchImageAsDataUrl('https://example.com/a.jpg')).rejects.toThrow(/解码失败/);
+    vi.unstubAllGlobals();
   });
 });

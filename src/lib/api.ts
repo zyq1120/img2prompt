@@ -279,12 +279,25 @@ export async function fetchImageAsDataUrl(
   imageUrl: string,
   maxEdgePx: number = MAX_IMAGE_EDGE_PX
 ): Promise<string> {
-  const response = await fetch(imageUrl);
-  if (!response.ok) {
-    throw new VisionApiError(`图片下载失败（HTTP ${response.status}），可能是防盗链`);
+  let blob: Blob;
+  try {
+    const response = await fetch(imageUrl);
+    if (!response.ok) {
+      throw new VisionApiError(`图片下载失败（HTTP ${response.status}），可能是防盗链`);
+    }
+    blob = await response.blob();
+  } catch (error) {
+    if (error instanceof VisionApiError) {
+      throw error;
+    }
+    throw new VisionApiError('图片下载失败，请检查网络连接后重试');
   }
-  const blob = await response.blob();
-  const bitmap = await createImageBitmap(blob);
+  let bitmap: ImageBitmap;
+  try {
+    bitmap = await createImageBitmap(blob);
+  } catch {
+    throw new VisionApiError('图片解码失败，可能是图片已损坏或格式不支持');
+  }
 
   const scale = Math.min(1, maxEdgePx / Math.max(bitmap.width, bitmap.height));
   const width = Math.max(1, Math.round(bitmap.width * scale));
