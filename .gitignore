@@ -4,3 +4,6 @@ dist/
 coverage/
 .DS_Store
 *.log
+
+# E2E 临时产物
+e2e/report.json

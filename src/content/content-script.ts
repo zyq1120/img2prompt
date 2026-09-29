@@ -21,12 +21,16 @@ import { startRegionSelect } from './region-selector.js';
 const PANEL_ROOT_ID = 'img2prompt-panel-root';
 /** 复制成功提示的显示时长（毫秒） */
 const COPIED_TIP_DURATION_MS = 1500;
+/** loading 分阶段文案的推进时刻（毫秒）：让等待过程有"人味" */
+const LOADING_STAGE_DELAYS_MS = [4000, 9000];
 
 let currentLang: PromptLanguage = 'zh';
 let currentText = '';
 let currentStructured: StructuredPrompt | undefined;
 let currentState: PanelState = 'loading';
 let currentTemplateId = '';
+/** loading 分阶段文案的定时器，进其他状态时清理 */
+let loadingStageTimers: ReturnType<typeof setTimeout>[] = [];
 /** 用户点击"取消"后等待 background 回执的标记 */
 let pendingCancel = false;
 /** 上一次成功的结果（取消时恢复用） */
@@ -124,6 +128,7 @@ function templateDisplayName(template: PromptTemplate): string {
 /** 切换面板状态并重渲染 body */
 function setState(state: PanelState, text?: string, error?: string): void {
   currentState = state;
+  clearLoadingStageTimers();
   const shadow = getShadow();
   if (!shadow) {
     return;
@@ -134,16 +139,35 @@ function setState(state: PanelState, text?: string, error?: string): void {
   }
   if (state === 'loading') {
     body.innerHTML = [
-      `<div class="ip-loading"><span class="ip-spinner"></span><span>${escapeHtml(t('panelLoading'))}</span></div>`,
+      `<div class="ip-loading"><span class="ip-spinner"></span><span class="ip-loading-text">${escapeHtml(t('panelLoading'))}</span></div>`,
       `<div class="ip-loading-actions"><button class="ip-btn ip-cancel">${escapeHtml(t('panelCancel'))}</button></div>`,
     ].join('');
     shadow.querySelector('.ip-cancel')?.addEventListener('click', cancelGeneration);
-    setCopyEnabled(shadow, false);
+    // 分阶段推进文案：分析图片 → 组织细节 → 润色，减少"卡住"的焦虑感
+    const stages = [t('panelLoadingStage2'), t('panelLoadingStage3')];
+    LOADING_STAGE_DELAYS_MS.forEach((delay, i) => {
+      loadingStageTimers.push(
+        setTimeout(() => {
+          const el = getShadow()?.querySelector('.ip-loading-text');
+          if (el && currentState === 'loading') {
+            el.textContent = stages[i] ?? '';
+          }
+        }, delay)
+      );
+    });
+    const refreshBtn = shadow.querySelector('.ip-refresh');
+    refreshBtn?.classList.add('spinning');
+    setActionsEnabled(shadow, false);
   } else if (state === 'result') {
-    body.innerHTML = currentStructured
-      ? renderStructured(currentStructured)
-      : `<pre class="ip-result">${renderRichText(text ?? currentText)}</pre>`;
-    setCopyEnabled(shadow, true);
+    body.innerHTML = [
+      currentStructured
+        ? renderStructured(currentStructured)
+        : `<pre class="ip-result">${renderRichText(text ?? currentText)}</pre>`,
+      `<div class="ip-meta"></div>`,
+    ].join('');
+    shadow.querySelector('.ip-refresh')?.classList.remove('spinning');
+    setActionsEnabled(shadow, true);
+    void renderResultMeta(shadow);
   } else {
     const goSettings = errorNeedsSettings(error);
     body.innerHTML = [
@@ -162,7 +186,8 @@ function setState(state: PanelState, text?: string, error?: string): void {
     shadow.querySelector('.ip-goto-settings')?.addEventListener('click', () => {
       chrome.runtime.sendMessage({ type: 'IMG2PROMPT_OPEN_OPTIONS' });
     });
-    setCopyEnabled(shadow, false);
+    shadow.querySelector('.ip-refresh')?.classList.remove('spinning');
+    setActionsEnabled(shadow, false);
   }
 }
 
@@ -241,6 +266,14 @@ function bindEvents(shadow: ShadowRoot): void {
       }
     })();
   });
+  // 刷新提示词：用相同语言/模板重新生成（模型随机性带来措辞变化）
+  shadow.querySelector('.ip-refresh')?.addEventListener('click', (event) => {
+    const btn = event.currentTarget as HTMLButtonElement | null;
+    if (btn?.disabled) {
+      return;
+    }
+    requestGenerate(currentLang, currentTemplateId);
+  });
 }
 
 /** 用户点击取消：本地立即恢复上一次状态，并通知 background 中止请求 */
@@ -277,12 +310,38 @@ function syncLangButtons(shadow: ShadowRoot): void {
   });
 }
 
-/** 设置复制按钮可用状态 */
-function setCopyEnabled(shadow: ShadowRoot, enabled: boolean): void {
+/** 设置底部操作按钮（复制 / 刷新）可用状态：仅结果态可用 */
+function setActionsEnabled(shadow: ShadowRoot, enabled: boolean): void {
   const copyBtn = shadow.querySelector<HTMLButtonElement>('.ip-copy');
   if (copyBtn) {
     copyBtn.disabled = !enabled;
   }
+  const refreshBtn = shadow.querySelector<HTMLButtonElement>('.ip-refresh');
+  if (refreshBtn) {
+    refreshBtn.disabled = !enabled;
+  }
+}
+
+/** 清理 loading 分阶段文案的定时器 */
+function clearLoadingStageTimers(): void {
+  for (const timer of loadingStageTimers) {
+    clearTimeout(timer);
+  }
+  loadingStageTimers = [];
+}
+
+/** 渲染结果元信息：模板名 · 字数（Apple HIG caption 样式，次要信息弱化） */
+async function renderResultMeta(shadow: ShadowRoot): Promise<void> {
+  const meta = shadow.querySelector('.ip-meta');
+  if (!meta) {
+    return;
+  }
+  const templates = await getTemplates();
+  const template = templates.find((tpl) => tpl.id === currentTemplateId);
+  const name = template ? templateDisplayName(template) : '';
+  const count = currentText.length;
+  const unit = t('panelCharsUnit');
+  meta.textContent = name ? `${name} · ${count} ${unit}` : `${count} ${unit}`;
 }
 
 /** 错误信息是否与缺配置相关（需要引导去设置页） */
@@ -446,6 +505,24 @@ function panelTemplate(): string {
     .ip-copy { background: #007aff; color: #fff; box-shadow: 0 2px 8px rgba(0, 122, 255, 0.35); flex: none; }
     .ip-copy:hover:not(:disabled) { filter: brightness(1.06); }
     .ip-copy:disabled { opacity: 0.45; cursor: default; box-shadow: none; }
+    /* 刷新按钮：iOS 风格圆形图标按钮 */
+    .ip-refresh {
+      width: 32px; height: 32px; flex: none;
+      display: inline-flex; align-items: center; justify-content: center;
+      border: 0; border-radius: 50%; cursor: pointer; padding: 0;
+      background: rgba(0, 122, 255, 0.1);
+      transition: background 0.15s, transform 0.1s;
+    }
+    .ip-refresh svg { width: 17px; height: 17px; fill: #007aff; }
+    .ip-refresh:hover:not(:disabled) { background: rgba(0, 122, 255, 0.18); }
+    .ip-refresh:active:not(:disabled) { transform: scale(0.92); }
+    .ip-refresh:disabled { opacity: 0.35; cursor: default; }
+    .ip-refresh.spinning svg { animation: ip-spin 0.9s linear infinite; }
+    /* 结果元信息：caption 样式，次要信息不抢戏 */
+    .ip-meta {
+      margin-top: 10px; font-size: 11px; color: #8e8e93;
+      text-align: right; letter-spacing: 0.01em;
+    }
     /* 深色模式：Apple HIG 强调的完整 dark appearance */
     @media (prefers-color-scheme: dark) {
       .ip-panel {
@@ -473,10 +550,15 @@ function panelTemplate(): string {
       .ip-footer { border-top-color: rgba(84, 84, 88, 0.6); }
       .ip-btn { background: rgba(255, 255, 255, 0.14); color: #0a84ff; }
       .ip-copy { background: #0a84ff; }
+      .ip-refresh { background: rgba(10, 132, 255, 0.16); }
+      .ip-refresh svg { fill: #0a84ff; }
+      .ip-refresh:hover:not(:disabled) { background: rgba(10, 132, 255, 0.26); }
+      .ip-meta { color: #98989f; }
     }
     @media (prefers-reduced-motion: reduce) {
       .ip-panel { animation: none; }
       .ip-spinner { animation-duration: 1.6s; }
+      .ip-refresh.spinning svg { animation: none; }
       .ip-lang::before { transition: none; }
     }
   </style>
@@ -496,6 +578,9 @@ function panelTemplate(): string {
     <div class="ip-body"></div>
     <div class="ip-footer">
       <select class="ip-template" data-i18n-title="panelTemplateTitle"></select>
+      <button class="ip-refresh" data-i18n-title="panelRegenerate" disabled aria-label="regenerate">
+        <svg viewBox="0 0 24 24"><path d="M12 5V1.8L6.8 7 12 12.2V9c3.3 0 6 2.7 6 6s-2.7 6-6 6-6-2.7-6-6H4c0 4.4 3.6 8 8 8s8-3.6 8-8-3.6-8-8-8z"/></svg>
+      </button>
       <button class="ip-copy" data-i18n="panelCopy" disabled></button>
     </div>
   </div>`;

@@ -270,5 +270,17 @@
   },
   "apiKeyRequiredForTest": {
     "message": "请先填写 API Key 与 Base URL 再测试"
+  },
+  "panelRegenerate": {
+    "message": "重新生成提示词"
+  },
+  "panelLoadingStage2": {
+    "message": "正在组织提示词细节…"
+  },
+  "panelLoadingStage3": {
+    "message": "快好了，正在润色…"
+  },
+  "panelCharsUnit": {
+    "message": "字"
   }
 }

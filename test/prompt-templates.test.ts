@@ -71,6 +71,32 @@ describe('BUILTIN_TEMPLATES', () => {
     }
   });
 
+  it('v0.3.0：所有文本模板要求穷尽式细节（拒绝泛泛而谈）', () => {
+    for (const template of BUILTIN_TEMPLATES) {
+      if (template.outputFormat !== 'text') {
+        continue;
+      }
+      const zh = buildTemplateSystemPrompt(template, 'zh');
+      expect(zh).toContain('five concrete visual details');
+      expect(zh).toContain('Prefer completeness over brevity');
+      expect(zh).toContain('Output ONLY the prompt text, nothing else.');
+    }
+  });
+
+  it('v0.3.0：长度提示已加长（中文 150-350 字）', () => {
+    const zh = buildTemplateSystemPrompt(getBuiltinTemplate(DEFAULT_TEMPLATE_ID), 'zh');
+    const en = buildTemplateSystemPrompt(getBuiltinTemplate(DEFAULT_TEMPLATE_ID), 'en');
+    expect(zh).toContain('150-350 个汉字');
+    expect(en).toContain('120-250 English words');
+  });
+
+  it('v0.3.0：JSON 模板的 prompt 字段同样要求详细', () => {
+    const json = BUILTIN_TEMPLATES.find((t) => t.outputFormat === 'json');
+    const zh = buildTemplateSystemPrompt(json!, 'zh');
+    expect(zh).toContain('five concrete visual details');
+    expect(zh).toContain('Prefer completeness over brevity');
+  });
+
   it('中英 user 文本不同且非空', () => {
     for (const template of BUILTIN_TEMPLATES) {
       const zh = buildTemplateUserText(template, 'zh');

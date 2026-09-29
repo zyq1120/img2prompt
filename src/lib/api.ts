@@ -22,7 +22,7 @@ const THUMBNAIL_EDGE_PX = 160;
 /** 压缩为 JPEG 时的质量 */
 const JPEG_QUALITY = 0.85;
 /** 模型最大输出 token 数 */
-const MAX_OUTPUT_TOKENS = 800;
+const MAX_OUTPUT_TOKENS = 1500;
 
 export interface GenerateImagePromptOptions {
   apiKey: string;

@@ -270,5 +270,17 @@
   },
   "apiKeyRequiredForTest": {
     "message": "Please fill in the API Key and Base URL before testing"
+  },
+  "panelRegenerate": {
+    "message": "Regenerate prompt"
+  },
+  "panelLoadingStage2": {
+    "message": "Organizing prompt details…"
+  },
+  "panelLoadingStage3": {
+    "message": "Almost there, polishing…"
+  },
+  "panelCharsUnit": {
+    "message": "chars"
   }
 }

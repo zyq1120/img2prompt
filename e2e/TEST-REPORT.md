@@ -128,3 +128,43 @@
 
 - `v0.2.0` tag 已打，release.yml 自动构建 zip 并创建 GitHub Release，全绿；资产 `img2prompt-v0.2.0.zip`（28 文件）已下载验包。
 - 本轮测试使用的 NVIDIA Key 仅作进程环境变量一次性使用，未写入仓库或记忆；**用后请轮换**。
+
+## 11. v0.3.0 开发测试（2026-09-29，未发布）
+
+需求：提示词尽可能详细、新增刷新提示词按钮、UI 按 Apple 设计思路更人性化。
+
+### 11.1 质量门禁（全部通过）
+
+| 门禁 | 结果 |
+|---|---|
+| TypeScript 类型检查 | 通过 |
+| ESLint | 通过 |
+| Prettier format check | 通过 |
+| esbuild 构建 | 通过 |
+
+### 11.2 单元测试：75/75 通过
+
+新增 3 个模板单测：全部文本模板含"five concrete visual details / Prefer completeness over brevity"、长度提示已加长（150–350 字）、JSON 模板 prompt 字段同样要求详细。
+
+### 11.3 真机 E2E
+
+| 脚本 | 结果 |
+|---|---|
+| `verify.mjs`（主流程） | 14/14 |
+| `verify-shortcut.mjs`（快捷键） | 4/4 |
+| `verify-uifix.mjs`（UI 优化） | 7/7 |
+| `verify-uifix2.mjs`（编辑器内测试连接） | 3/3 |
+| `verify-v03.mjs`（新增：刷新按钮/分阶段 loading/元信息） | **8/8** |
+
+`verify-v03.mjs` 验证点：错误态刷新按钮禁用 → 合成结果态按钮可用、元信息 `模板名 · 字数` 出现 → 点击刷新进入 loading（阶段一文案）且图标旋转 → 无 Key 报错（证明重新生成链路真实跑通）。
+
+### 11.4 本轮发现并修复的真实问题（2 个）
+
+1. **刷新图标在错误态一直旋转**：`setState` 的 error 分支未清除 `spinning` 类。已修复，error/result 分支都清除。
+2. **`verify-uifix.mjs` 固定 profile 残留配置**：脚本用 `/tmp/e2e-uifix-profile` 固定路径，自身"已配 Key 反向边界"步骤写入的 Key 会污染下次运行，导致"未配 Key"断言失败。改为运行前 `chrome.storage.local.clear()`。产品代码无问题。
+
+### 11.5 待真实 API 验证
+
+- 新模板的实际输出详细程度（需模型调用，断言字数/维度覆盖）
+- 刷新按钮在真实结果态的二次生成
+- 以上需要用户再次提供一次性 NVIDIA Key 后运行 `verify-nvapi.mjs` 扩展用例。

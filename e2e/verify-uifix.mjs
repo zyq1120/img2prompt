@@ -38,12 +38,19 @@ const browser = await chromium.launchPersistentContext('/tmp/e2e-uifix-profile',
 });
 const worker = browser.serviceWorkers()[0] ?? (await browser.waitForEvent('serviceworker'));
 const extId = worker.url().split('/')[2];
+// 固定 profile 会残留上次运行的配置：先清空，保证"未配 Key"前置条件
+await worker.evaluate(async () => {
+  await chrome.storage.local.clear();
+});
 
 // —— popup 空状态 ——
 const popup = await browser.newPage();
 await popup.setViewportSize({ width: 380, height: 600 });
 await popup.goto(`chrome-extension://${extId}/popup/popup.html`);
-await popup.waitForTimeout(800);
+await popup.waitForFunction(
+  () => !document.getElementById('emptyState').hidden || !!document.getElementById('historyList').children.length,
+  { timeout: 10000 }
+);
 const emptyVisible = await popup.$eval('#emptyState', (el) => !el.hidden);
 const ctaVisible = await popup.$eval('#setupApiBtn', (el) => !el.hidden);
 const ctaText = await popup.$eval('#setupApiBtn', (el) => el.textContent);
