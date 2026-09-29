@@ -205,6 +205,17 @@ try {
     `${regionText.length} chars`);
   console.log('选区结果预览：' + regionText.slice(0, 100));
 
+  // ---- 4b. 快捷键链路：经 E2E 钩子触发与快捷键完全相同的处理函数 ----
+  // （headless 无法合成系统级按键；按键本身由 Chrome 负责分发）
+  await worker.evaluate(async () => {
+    await globalThis.__img2promptE2E.triggerRegionSelectCommand();
+  });
+  await page.waitForSelector('[data-img2prompt-region-overlay]', { timeout: 15000 });
+  step('快捷键链路：触发框选 overlay', true);
+  await page.screenshot({ path: path.join(SHOTS, '14b-region-shortcut.png') });
+  await page.keyboard.press('Escape'); // 关闭 overlay，避免影响后续步骤
+  await page.waitForTimeout(400);
+
   // ---- 5. JSON 模板：结构化渲染 ----
   await page.evaluate(() => {
     const sel = document.querySelector('#img2prompt-panel-root')?.shadowRoot?.querySelector('.ip-template');

@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    width: 440px; height: 280px;
+    font-family: -apple-system, "SF Pro Text", "PingFang SC", "Helvetica Neue", sans-serif;
+    background: linear-gradient(135deg, #f2f7ff 0%, #ffffff 60%, #eef4ff 100%);
+    display: flex; align-items: center; padding: 32px;
+    -webkit-font-smoothing: antialiased;
+  }
+  .icon {
+    width: 88px; height: 88px; border-radius: 22px; flex-shrink: 0;
+    box-shadow: 0 8px 24px rgba(0,122,255,.25);
+  }
+  .text { margin-left: 24px; }
+  h1 { font-size: 34px; font-weight: 700; color: #1c1c1e; letter-spacing: -0.5px; }
+  h1 .dot { color: #007aff; }
+  .tagline { margin-top: 10px; font-size: 15px; line-height: 1.55; color: #3a3a3c; }
+  .keys { margin-top: 14px; display: flex; gap: 8px; align-items: center; }
+  kbd {
+    font-family: -apple-system, sans-serif; font-size: 12px; font-weight: 600;
+    background: #fff; border: 1px solid #d1d1d6; border-bottom-width: 2px;
+    border-radius: 6px; padding: 3px 8px; color: #1c1c1e;
+  }
+  .keys span { font-size: 13px; color: #636366; }
+  .badge {
+    position: absolute; top: 24px; right: 28px;
+    font-size: 11px; font-weight: 600; color: #007aff;
+    background: rgba(0,122,255,.1); border-radius: 20px; padding: 5px 12px;
+    letter-spacing: .5px;
+  }
+</style>
+</head>
+<body>
+  <div class="badge">CHROME 扩展</div>
+  <img class="icon" src="file:///home/hatch/workspace/img2prompt/src/assets/icons/icon-128.png" alt="img2prompt">
+  <div class="text">
+    <h1>img2prompt<span class="dot">.</span></h1>
+    <p class="tagline">右键图片，一键生成<br>AI 绘画提示词</p>
+    <div class="keys"><kbd>Ctrl</kbd><span>+</span><kbd>Shift</kbd><span>+</span><kbd>Y</kbd><span>框选识别</span></div>
+  </div>
+</body>
+</html>

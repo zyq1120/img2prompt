@@ -30,6 +30,8 @@ import type {
 const CONTEXT_MENU_IMAGE_ID = 'img2prompt-generate';
 /** 右键菜单项 ID：框选截图识别 */
 const CONTEXT_MENU_REGION_ID = 'img2prompt-region';
+/** 快捷键命令 ID：框选截图识别（与右键菜单同一链路） */
+const COMMAND_REGION_SELECT_ID = 'region-select';
 /** 历史缩略图长边（选区/上传场景） */
 const THUMBNAIL_EDGE_PX = 160;
 
@@ -85,6 +87,26 @@ chrome.contextMenus.onClicked.addListener((info, tab) => {
     void startRegionSelect(tab.id);
   }
 });
+
+// 快捷键（manifest commands）：按下时浏览器会授予当前 tab 的 activeTab
+chrome.commands.onCommand.addListener((command) => {
+  if (command === COMMAND_REGION_SELECT_ID) {
+    void triggerRegionSelectCommand();
+  }
+});
+
+/**
+ * 快捷键触发框选识别：取当前活动 tab，走与右键"框选截图并识别"
+ * 完全相同的 startRegionSelect 链路。
+ */
+async function triggerRegionSelectCommand(): Promise<void> {
+  const tabs = await chrome.tabs.query({ active: true, currentWindow: true });
+  const tabId = tabs[0]?.id;
+  if (tabId === undefined) {
+    return;
+  }
+  await startRegionSelect(tabId);
+}
 
 chrome.runtime.onMessage.addListener((message: ExtensionMessage, sender) => {
   const tabId = sender.tab?.id;
@@ -349,6 +371,8 @@ async function sendToTab(tabId: number, message: ExtensionMessage): Promise<void
     screenshotDataUrl: string
   ) => handleRegionShot(tabId, rect, devicePixelRatio, screenshotDataUrl),
   cancelGeneration: (tabId: number) => cancelGeneration(tabId),
+  /** E2E 专用：触发与快捷键完全相同的处理函数（headless 无法合成系统级按键） */
+  triggerRegionSelectCommand: () => triggerRegionSelectCommand(),
 };
 
 export {};

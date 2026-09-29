@@ -249,5 +249,11 @@
   },
   "optionsDelete": {
     "message": "删除"
+  },
+  "commandRegionSelect": {
+    "message": "框选截图并识别"
+  },
+  "optionsShortcutHint": {
+    "message": "快捷键 Ctrl+Shift+Y（Mac 上为 ⌘+Shift+Y）可快速框选截图并识别，可在 chrome://extensions/shortcuts 中修改。"
   }
 }

@@ -8,6 +8,7 @@
 ## 功能 Features
 
 - 🖱️ **右键即分析**：在图片上右键 →「生成图片提示词」，页内悬浮面板直接展示结果
+- ⌨️ **快捷键框选**：`Ctrl+Shift+Y`（Mac 上 `⌘+Shift+Y`）直接进入框选截图识别，可在 `chrome://extensions/shortcuts` 修改
 - 🌐 **中英一键切换**：面板内 中 / EN 切换，复用已下载图片重新生成，无需重复等待下载
 - 📋 **一键复制**：结果面板、历史记录均可一键复制
 - 🕘 **本地历史**：最近 20 条生成记录保存在本地，popup 点击复制、一键清空
@@ -114,6 +115,7 @@ v1 坚持最短流程：**右键即分析 → 页内悬浮卡展示 → 一键�
 ### Features
 
 - 🖱️ **Right-click to analyze**: context menu on any image, floating in-page panel shows the result
+- ⌨️ **Shortcut for region select**: `Ctrl+Shift+Y` (`⌘+Shift+Y` on Mac) starts region capture directly; remappable at `chrome://extensions/shortcuts`
 - 🌐 **One-click zh/en switch**: re-generates in the other language reusing the downloaded image
 - 📋 **One-click copy** from the panel and from history
 - 🕘 **Local history**: last 20 generations stored locally, click to copy, one-click clear
