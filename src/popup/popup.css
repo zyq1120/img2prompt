@@ -427,6 +427,30 @@ button.ghost[hidden] {
   -webkit-text-fill-color: transparent;
 }
 
+.empty p {
+  margin: 0;
+}
+
+.setup-cta {
+  margin-top: 16px;
+  background: #007aff;
+  color: #fff;
+  border: 0;
+  border-radius: 10px;
+  padding: 9px 20px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.setup-cta:hover {
+  filter: brightness(0.95);
+}
+
+.setup-cta[hidden] {
+  display: none;
+}
+
 /* 深色模式 */
 @media (prefers-color-scheme: dark) {
   body {
@@ -441,6 +465,10 @@ button.ghost[hidden] {
 
   button.ghost {
     color: #0a84ff;
+  }
+
+  .setup-cta {
+    background: #0a84ff;
   }
 
   button.ghost:hover {

@@ -255,5 +255,14 @@
   },
   "optionsShortcutHint": {
     "message": "Press Ctrl+Shift+Y (⌘+Shift+Y on Mac) to quickly select a region and recognize it. You can remap it at chrome://extensions/shortcuts."
+  },
+  "popupSetupApi": {
+    "message": "Set up your API key"
+  },
+  "optionsShowKey": {
+    "message": "Show"
+  },
+  "optionsHideKey": {
+    "message": "Hide"
   }
 }

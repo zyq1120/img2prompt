@@ -55,7 +55,10 @@
     </section>
 
     <main id="historyList" class="history-list"></main>
-    <p id="emptyState" class="empty" data-i18n="popupEmpty" hidden></p>
+    <div id="emptyState" class="empty" hidden>
+      <p data-i18n="popupEmpty"></p>
+      <button id="setupApiBtn" class="setup-cta" data-i18n="popupSetupApi" hidden></button>
+    </div>
     <script type="module" src="popup.js"></script>
   </body>
 </html>

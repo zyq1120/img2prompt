@@ -31,6 +31,7 @@ const SEARCH_DEBOUNCE_MS = 250;
 
 const listEl = document.getElementById('historyList') as HTMLElement;
 const emptyEl = document.getElementById('emptyState') as HTMLElement;
+const setupApiBtn = document.getElementById('setupApiBtn') as HTMLButtonElement;
 const clearBtn = document.getElementById('clearBtn') as HTMLButtonElement;
 const optionsBtn = document.getElementById('optionsBtn') as HTMLButtonElement;
 const providerSelect = document.getElementById('providerSelect') as HTMLSelectElement;
@@ -63,6 +64,10 @@ async function init(): Promise<void> {
 
 function bindEvents(): void {
   optionsBtn.addEventListener('click', () => {
+    void chrome.runtime.openOptionsPage();
+  });
+
+  setupApiBtn.addEventListener('click', () => {
     void chrome.runtime.openOptionsPage();
   });
 
@@ -255,8 +260,12 @@ async function handleUpload(file: File): Promise<void> {
 /** 拉取（搜索/过滤后的）历史并渲染列表 */
 async function renderHistory(): Promise<void> {
   const history = await searchHistory(searchInput.value, { favoritesOnly });
+  const settings = await getSettings();
+  // 新用户：没有任何服务商填了 Key，空状态给出去配置的入口
+  const needsSetup = !settings.providers.some((p) => p.apiKey.trim() !== '');
   listEl.innerHTML = '';
   emptyEl.hidden = history.length > 0;
+  setupApiBtn.hidden = history.length > 0 || !needsSetup;
   clearBtn.hidden = history.length === 0;
 
   for (const item of history) {

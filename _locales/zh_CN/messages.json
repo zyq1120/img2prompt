@@ -255,5 +255,14 @@
   },
   "optionsShortcutHint": {
     "message": "快捷键 Ctrl+Shift+Y（Mac 上为 ⌘+Shift+Y）可快速框选截图并识别，可在 chrome://extensions/shortcuts 中修改。"
+  },
+  "popupSetupApi": {
+    "message": "去配置 API"
+  },
+  "optionsShowKey": {
+    "message": "显示"
+  },
+  "optionsHideKey": {
+    "message": "隐藏"
   }
 }

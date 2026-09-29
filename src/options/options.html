@@ -46,12 +46,17 @@
         </label>
         <label class="field">
           <span data-i18n="optionsApiKey">API Key</span>
-          <input
-            id="providerKey"
-            type="password"
-            autocomplete="off"
-            data-i18n-ph="optionsApiKeyPh"
-          />
+          <span class="password-wrap">
+            <input
+              id="providerKey"
+              type="password"
+              autocomplete="off"
+              data-i18n-ph="optionsApiKeyPh"
+            />
+            <button id="toggleKeyBtn" type="button" class="key-toggle" data-i18n="optionsShowKey">
+              显示
+            </button>
+          </span>
         </label>
         <label class="field">
           <span data-i18n="optionsBaseUrl">Base URL</span>

@@ -36,6 +36,19 @@ const providerBaseUrlInput = document.getElementById('providerBaseUrl') as HTMLI
 const providerModelInput = document.getElementById('providerModel') as HTMLInputElement;
 const saveProviderBtn = document.getElementById('saveProviderBtn') as HTMLButtonElement;
 const cancelProviderBtn = document.getElementById('cancelProviderBtn') as HTMLButtonElement;
+const toggleKeyBtn = document.getElementById('toggleKeyBtn') as HTMLButtonElement;
+
+/** 打开编辑器时重置 Key 为隐藏状态，避免上次的明文残留 */
+function resetKeyVisibility(): void {
+  providerKeyInput.type = 'password';
+  toggleKeyBtn.textContent = t('optionsShowKey');
+}
+
+toggleKeyBtn.addEventListener('click', () => {
+  const showing = providerKeyInput.type === 'text';
+  providerKeyInput.type = showing ? 'password' : 'text';
+  toggleKeyBtn.textContent = t(showing ? 'optionsShowKey' : 'optionsHideKey');
+});
 
 const templateList = document.getElementById('templateList') as HTMLElement;
 const addTemplateBtn = document.getElementById('addTemplateBtn') as HTMLButtonElement;
@@ -92,6 +105,7 @@ addProviderBtn.addEventListener('click', () => {
   editingProviderId = null;
   providerNameInput.value = '';
   providerKeyInput.value = '';
+  resetKeyVisibility();
   providerBaseUrlInput.value = 'https://api.openai.com/v1';
   providerModelInput.value = 'gpt-4o';
   providerEditor.hidden = false;
@@ -231,6 +245,7 @@ function createProviderRow(provider: ProviderConfig, settings: PluginSettings): 
     editingProviderId = provider.id;
     providerNameInput.value = provider.name;
     providerKeyInput.value = provider.apiKey;
+    resetKeyVisibility();
     providerBaseUrlInput.value = provider.baseUrl;
     providerModelInput.value = provider.model;
     providerEditor.hidden = false;

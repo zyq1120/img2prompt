@@ -118,6 +118,34 @@ h1 {
   font-size: 14px;
 }
 
+/* API Key 显示/隐藏切换 */
+.password-wrap {
+  position: relative;
+  display: block;
+}
+
+.password-wrap input {
+  padding-right: 64px;
+}
+
+.key-toggle {
+  position: absolute;
+  right: 4px;
+  top: 50%;
+  transform: translateY(-50%);
+  border: 0;
+  background: none;
+  color: #007aff;
+  font-size: 14px;
+  padding: 8px 10px;
+  cursor: pointer;
+  border-radius: 8px;
+}
+
+.key-toggle:hover {
+  background: rgba(0, 122, 255, 0.08);
+}
+
 .field input::placeholder,
 .field textarea::placeholder {
   color: #c7c7cc;
@@ -349,6 +377,14 @@ button:disabled {
 
   .field + .field {
     border-top-color: rgba(84, 84, 88, 0.6);
+  }
+
+  .key-toggle {
+    color: #0a84ff;
+  }
+
+  .key-toggle:hover {
+    background: rgba(10, 132, 255, 0.12);
   }
 
   .field span {
