@@ -270,7 +270,7 @@ function createItemElement(item: HistoryItem): HTMLElement {
   wrapper.className = 'history-item';
 
   const button = document.createElement('button');
-  button.className = 'history-item';
+  button.className = 'history-main';
   button.type = 'button';
   button.style.cssText =
     'all: unset; display: flex; gap: 12px; align-items: flex-start; flex: 1; min-width: 0; cursor: pointer;';
