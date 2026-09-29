@@ -170,14 +170,18 @@ try {
   step('中英切换：英文重新生成并展示', enText.length > 20 && enText !== zhText, `${enText.length} chars`);
 
   // ---- 4. 选区截图链路 ----
+  // headless 下无法产生授予 activeTab 的真实菜单点击，因此经 CDP 截图后
+  // 调用 handleRegionShot：裁剪 → 生成 → 面板 → 历史均为真实链路。
   const rect = await page.evaluate(() => {
     const r = document.querySelector('#target').getBoundingClientRect();
     return { x: r.x, y: r.y, width: r.width, height: r.height };
   });
+  const shotBuffer = await page.screenshot({ type: 'png' });
+  const shotDataUrl = `data:image/png;base64,${shotBuffer.toString('base64')}`;
   const beforeRegion = enText;
-  await worker.evaluate(async ({ tabId, rect }) => {
-    await globalThis.__img2promptE2E.handleRegionDone(tabId, rect, 1);
-  }, { tabId, rect });
+  await worker.evaluate(async ({ tabId, rect, shotDataUrl }) => {
+    await globalThis.__img2promptE2E.handleRegionShot(tabId, rect, 1, shotDataUrl);
+  }, { tabId, rect, shotDataUrl });
   await page.waitForFunction(
     (prev) => {
       const t = document.querySelector('#img2prompt-panel-root')?.shadowRoot?.querySelector('.ip-result')?.textContent || '';

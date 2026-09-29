@@ -127,7 +127,7 @@ async function startRegionSelect(tabId: number): Promise<void> {
   await sendToTab(tabId, { type: 'IMG2PROMPT_REGION_SELECT' });
 }
 
-/** 选区完成：截取可见区域 → 裁剪 → 走标准生成链路 */
+/** 选区完成：截取可见区域 → 走截图处理链路 */
 async function handleRegionDone(
   tabId: number,
   rect: { x: number; y: number; width: number; height: number },
@@ -137,17 +137,11 @@ async function handleRegionDone(
     if (rect.width < 4 || rect.height < 4) {
       throw new VisionApiError('选区太小，请重新框选');
     }
+    // 需要 activeTab（用户点击右键菜单时授予）或 <all_urls> 权限
     const screenshotDataUrl = await chrome.tabs.captureVisibleTab({
       format: 'png',
     });
-    const imageDataUrl = await cropScreenshot(screenshotDataUrl, rect, devicePixelRatio);
-    await sendToTab(tabId, { type: 'IMG2PROMPT_START', imageUrl: '' });
-    await runGeneration({
-      tabId,
-      imageDataUrl,
-      source: 'region',
-      saveHistory: true,
-    });
+    await handleRegionShot(tabId, rect, devicePixelRatio, screenshotDataUrl);
   } catch (error) {
     const message = error instanceof VisionApiError ? error.message : '截图失败，请重试';
     await sendToTab(tabId, {
@@ -156,6 +150,27 @@ async function handleRegionDone(
       error: message,
     });
   }
+}
+
+/**
+ * 选区截图已拿到：裁剪 → 走标准生成链路。
+ * 与 handleRegionDone 分离，便于 E2E 在 headless 下经 CDP 截图注入验证
+ * （headless 无法产生授予 activeTab 的真实菜单点击）。
+ */
+async function handleRegionShot(
+  tabId: number,
+  rect: { x: number; y: number; width: number; height: number },
+  devicePixelRatio: number,
+  screenshotDataUrl: string
+): Promise<void> {
+  const imageDataUrl = await cropScreenshot(screenshotDataUrl, rect, devicePixelRatio);
+  await sendToTab(tabId, { type: 'IMG2PROMPT_START', imageUrl: '' });
+  await runGeneration({
+    tabId,
+    imageDataUrl,
+    source: 'region',
+    saveHistory: true,
+  });
 }
 
 /** 取消指定 tab 正在进行的生成请求 */
@@ -326,6 +341,13 @@ async function sendToTab(tabId: number, message: ExtensionMessage): Promise<void
     rect: { x: number; y: number; width: number; height: number },
     devicePixelRatio: number
   ) => handleRegionDone(tabId, rect, devicePixelRatio),
+  /** E2E 专用：跳过 captureVisibleTab（headless 无手势），直接走裁剪→生成链路 */
+  handleRegionShot: (
+    tabId: number,
+    rect: { x: number; y: number; width: number; height: number },
+    devicePixelRatio: number,
+    screenshotDataUrl: string
+  ) => handleRegionShot(tabId, rect, devicePixelRatio, screenshotDataUrl),
   cancelGeneration: (tabId: number) => cancelGeneration(tabId),
 };
 
