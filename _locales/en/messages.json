@@ -102,5 +102,152 @@
   "optionsCardGeneral": {
     "message": "General",
     "description": "设置页：通用分组标题"
+  },
+  "contextMenuRegionTitle": {
+    "message": "Select region & recognize"
+  },
+  "regionHint": {
+    "message": "Drag to select a region, Esc to cancel"
+  },
+  "panelCancel": {
+    "message": "Cancel"
+  },
+  "panelTemplateTitle": {
+    "message": "Prompt template"
+  },
+  "panelJsonStyle": {
+    "message": "Style"
+  },
+  "panelJsonMood": {
+    "message": "Mood"
+  },
+  "panelJsonColors": {
+    "message": "Colors"
+  },
+  "templateNameGeneral": {
+    "message": "General"
+  },
+  "templateNamePortrait": {
+    "message": "Portrait"
+  },
+  "templateNameLandscape": {
+    "message": "Landscape"
+  },
+  "templateNameProduct": {
+    "message": "Product"
+  },
+  "templateNameConcept": {
+    "message": "Concept Art"
+  },
+  "templateNameIllustration": {
+    "message": "Illustration"
+  },
+  "templateNameJson": {
+    "message": "Structured JSON"
+  },
+  "popupProviderTitle": {
+    "message": "Active provider"
+  },
+  "popupTemplateTitle": {
+    "message": "Active template"
+  },
+  "popupDropTitle": {
+    "message": "Upload image to recognize"
+  },
+  "popupDropHint": {
+    "message": "Drop an image here, or click to choose"
+  },
+  "popupUploading": {
+    "message": "Recognizing…"
+  },
+  "popupUploadInvalid": {
+    "message": "Please choose a valid image file"
+  },
+  "popupSearchPh": {
+    "message": "Search history"
+  },
+  "popupFavOnlyTitle": {
+    "message": "Favorites only"
+  },
+  "popupFavTitle": {
+    "message": "Favorite"
+  },
+  "optionsCardProviders": {
+    "message": "Providers"
+  },
+  "optionsAddProvider": {
+    "message": "＋ Add provider"
+  },
+  "optionsProviderEditorTitle": {
+    "message": "Provider settings"
+  },
+  "optionsProviderName": {
+    "message": "Name"
+  },
+  "optionsProviderNamePh": {
+    "message": "e.g. NVIDIA, OpenRouter"
+  },
+  "optionsProviderNameRequired": {
+    "message": "Please enter a provider name"
+  },
+  "optionsSetActive": {
+    "message": "Set active"
+  },
+  "optionsBadgeActive": {
+    "message": "Active"
+  },
+  "optionsDeleteProviderHint": {
+    "message": "Keep at least one provider"
+  },
+  "optionsCardTemplates": {
+    "message": "Prompt templates"
+  },
+  "optionsAddTemplate": {
+    "message": "＋ New template"
+  },
+  "optionsTemplateEditorTitle": {
+    "message": "Edit template"
+  },
+  "optionsTemplateName": {
+    "message": "Template name"
+  },
+  "optionsTemplateNameRequired": {
+    "message": "Please enter a template name"
+  },
+  "optionsTemplateFormat": {
+    "message": "Output format"
+  },
+  "optionsTemplateFormatText": {
+    "message": "Text"
+  },
+  "optionsTemplateFormatJson": {
+    "message": "Structured JSON"
+  },
+  "optionsTemplateSystem": {
+    "message": "System prompt"
+  },
+  "optionsTemplateSystemPh": {
+    "message": "Supports {outputLanguage} and {lengthHint} placeholders"
+  },
+  "optionsTemplateSystemRequired": {
+    "message": "Please enter a system prompt"
+  },
+  "optionsTemplateUserZh": {
+    "message": "User text (Chinese output)"
+  },
+  "optionsTemplateUserEn": {
+    "message": "User text (English output)"
+  },
+  "optionsTemplateBuiltin": {
+    "message": "Built-in template"
+  },
+  "optionsCancel": {
+    "message": "Cancel"
+  },
+  "optionsEdit": {
+    "message": "Edit"
+  },
+  "optionsDelete": {
+    "message": "Delete"
   }
 }

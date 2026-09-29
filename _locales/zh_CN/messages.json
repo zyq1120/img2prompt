@@ -102,5 +102,152 @@
   "optionsCardGeneral": {
     "message": "通用",
     "description": "设置页：通用分组标题"
+  },
+  "contextMenuRegionTitle": {
+    "message": "框选截图并识别"
+  },
+  "regionHint": {
+    "message": "拖拽框选要识别的区域，Esc 取消"
+  },
+  "panelCancel": {
+    "message": "取消"
+  },
+  "panelTemplateTitle": {
+    "message": "提示词模板"
+  },
+  "panelJsonStyle": {
+    "message": "风格"
+  },
+  "panelJsonMood": {
+    "message": "氛围"
+  },
+  "panelJsonColors": {
+    "message": "色彩"
+  },
+  "templateNameGeneral": {
+    "message": "通用"
+  },
+  "templateNamePortrait": {
+    "message": "人像摄影"
+  },
+  "templateNameLandscape": {
+    "message": "风景建筑"
+  },
+  "templateNameProduct": {
+    "message": "产品静物"
+  },
+  "templateNameConcept": {
+    "message": "概念艺术"
+  },
+  "templateNameIllustration": {
+    "message": "插画水彩"
+  },
+  "templateNameJson": {
+    "message": "结构化 JSON"
+  },
+  "popupProviderTitle": {
+    "message": "当前服务商"
+  },
+  "popupTemplateTitle": {
+    "message": "当前模板"
+  },
+  "popupDropTitle": {
+    "message": "上传图片识别"
+  },
+  "popupDropHint": {
+    "message": "拖拽图片到这里，或点击选择"
+  },
+  "popupUploading": {
+    "message": "识别中…"
+  },
+  "popupUploadInvalid": {
+    "message": "请选择有效的图片文件"
+  },
+  "popupSearchPh": {
+    "message": "搜索历史记录"
+  },
+  "popupFavOnlyTitle": {
+    "message": "仅看收藏"
+  },
+  "popupFavTitle": {
+    "message": "收藏"
+  },
+  "optionsCardProviders": {
+    "message": "服务商"
+  },
+  "optionsAddProvider": {
+    "message": "＋ 添加服务商"
+  },
+  "optionsProviderEditorTitle": {
+    "message": "服务商配置"
+  },
+  "optionsProviderName": {
+    "message": "名称"
+  },
+  "optionsProviderNamePh": {
+    "message": "如 NVIDIA、OpenRouter"
+  },
+  "optionsProviderNameRequired": {
+    "message": "请填写服务商名称"
+  },
+  "optionsSetActive": {
+    "message": "设为当前"
+  },
+  "optionsBadgeActive": {
+    "message": "当前"
+  },
+  "optionsDeleteProviderHint": {
+    "message": "至少保留一个服务商"
+  },
+  "optionsCardTemplates": {
+    "message": "提示词模板"
+  },
+  "optionsAddTemplate": {
+    "message": "＋ 新建模板"
+  },
+  "optionsTemplateEditorTitle": {
+    "message": "模板编辑"
+  },
+  "optionsTemplateName": {
+    "message": "模板名称"
+  },
+  "optionsTemplateNameRequired": {
+    "message": "请填写模板名称"
+  },
+  "optionsTemplateFormat": {
+    "message": "输出格式"
+  },
+  "optionsTemplateFormatText": {
+    "message": "文本"
+  },
+  "optionsTemplateFormatJson": {
+    "message": "结构化 JSON"
+  },
+  "optionsTemplateSystem": {
+    "message": "System 提示词"
+  },
+  "optionsTemplateSystemPh": {
+    "message": "支持 {outputLanguage} 与 {lengthHint} 占位符"
+  },
+  "optionsTemplateSystemRequired": {
+    "message": "请填写 System 提示词"
+  },
+  "optionsTemplateUserZh": {
+    "message": "User 文本（中文输出时）"
+  },
+  "optionsTemplateUserEn": {
+    "message": "User 文本（英文输出时）"
+  },
+  "optionsTemplateBuiltin": {
+    "message": "内置模板"
+  },
+  "optionsCancel": {
+    "message": "取消"
+  },
+  "optionsEdit": {
+    "message": "编辑"
+  },
+  "optionsDelete": {
+    "message": "删除"
   }
 }

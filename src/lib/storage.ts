@@ -2,11 +2,7 @@
  * chrome.storage.local 的类型化封装。
  * API Key 仅保存在用户本地浏览器中，绝不上传、绝不进仓库。
  */
-import {
-  BUILTIN_TEMPLATES,
-  DEFAULT_TEMPLATE_ID,
-  getBuiltinTemplate,
-} from './prompt-templates.js';
+import { BUILTIN_TEMPLATES, DEFAULT_TEMPLATE_ID, getBuiltinTemplate } from './prompt-templates.js';
 import type {
   HistoryItem,
   PluginSettings,
@@ -108,7 +104,10 @@ export async function deleteProvider(id: string): Promise<void> {
   }
   settings.providers = settings.providers.filter((p) => p.id !== id);
   if (settings.activeProviderId === id) {
-    settings.activeProviderId = settings.providers[0].id;
+    const first = settings.providers[0];
+    if (first) {
+      settings.activeProviderId = first.id;
+    }
   }
   await saveSettings(settings);
 }
@@ -126,10 +125,7 @@ export async function setActiveProvider(id: string): Promise<void> {
 export async function getTemplates(): Promise<PromptTemplate[]> {
   const customs = await getCustomTemplates();
   const overrideIds = new Set(customs.map((t) => t.id));
-  return [
-    ...BUILTIN_TEMPLATES.filter((t) => !overrideIds.has(t.id)),
-    ...customs,
-  ];
+  return [...BUILTIN_TEMPLATES.filter((t) => !overrideIds.has(t.id)), ...customs];
 }
 
 /** 按 id 取模板（含内置与自定义），找不到时回退默认模板 */
@@ -288,7 +284,7 @@ function sanitizeSettings(raw: Partial<PluginSettings> | undefined): PluginSetti
     typeof legacy.activeProviderId === 'string' &&
     providers.some((p) => p.id === legacy.activeProviderId)
       ? legacy.activeProviderId
-      : providers[0].id;
+      : (providers[0]?.id ?? defaultProvider().id);
 
   return {
     providers,
@@ -312,35 +308,35 @@ function sanitizeProvider(raw: Partial<ProviderConfig>): ProviderConfig {
         ? raw.baseUrl.trim().replace(/\/+$/, '')
         : defaults.baseUrl,
     apiKey: typeof raw.apiKey === 'string' ? raw.apiKey : '',
-    model:
-      typeof raw.model === 'string' && raw.model.trim() ? raw.model.trim() : defaults.model,
+    model: typeof raw.model === 'string' && raw.model.trim() ? raw.model.trim() : defaults.model,
   };
 }
 
 /** 清洗单个模板 */
 function sanitizeTemplate(raw: Partial<PromptTemplate>): PromptTemplate {
-  return {
+  const cleaned: PromptTemplate = {
     id: typeof raw.id === 'string' ? raw.id : '',
     name: typeof raw.name === 'string' && raw.name.trim() ? raw.name.trim() : 'Untitled',
-    nameI18nKey: typeof raw.nameI18nKey === 'string' ? raw.nameI18nKey : undefined,
     systemPrompt: typeof raw.systemPrompt === 'string' ? raw.systemPrompt : '',
     userTextZh: typeof raw.userTextZh === 'string' ? raw.userTextZh : '',
     userTextEn: typeof raw.userTextEn === 'string' ? raw.userTextEn : '',
     outputFormat: raw.outputFormat === 'json' ? 'json' : 'text',
     builtin: raw.builtin === true,
   };
+  if (typeof raw.nameI18nKey === 'string') {
+    cleaned.nameI18nKey = raw.nameI18nKey;
+  }
+  return cleaned;
 }
 
 /** 清洗历史条目：补齐新字段，兼容旧数据 */
 function sanitizeHistoryItem(raw: HistoryItem): HistoryItem {
-  return {
+  const cleaned: HistoryItem = {
     id: typeof raw.id === 'string' ? raw.id : generateId(),
     imageUrl: typeof raw.imageUrl === 'string' ? raw.imageUrl : '',
     source: raw.source === 'region' || raw.source === 'upload' ? raw.source : 'context-menu',
     thumbnail: typeof raw.thumbnail === 'string' ? raw.thumbnail : '',
     prompt: typeof raw.prompt === 'string' ? raw.prompt : '',
-    structured:
-      raw.structured && typeof raw.structured.prompt === 'string' ? raw.structured : undefined,
     lang: raw.lang === 'en' ? 'en' : 'zh',
     model: typeof raw.model === 'string' ? raw.model : '',
     providerName: typeof raw.providerName === 'string' ? raw.providerName : '',
@@ -348,6 +344,10 @@ function sanitizeHistoryItem(raw: HistoryItem): HistoryItem {
     favorite: raw.favorite === true,
     createdAt: typeof raw.createdAt === 'number' ? raw.createdAt : Date.now(),
   };
+  if (raw.structured && typeof raw.structured.prompt === 'string') {
+    cleaned.structured = raw.structured;
+  }
+  return cleaned;
 }
 
 /** 生成唯一 ID（优先 crypto.randomUUID，降级为时间戳+随机数） */

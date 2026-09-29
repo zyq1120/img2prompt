@@ -1,5 +1,13 @@
 import { describe, expect, it } from 'vitest';
-import { buildSystemPrompt, buildUserText } from '../src/lib/prompt-templates.js';
+import {
+  BUILTIN_TEMPLATES,
+  DEFAULT_TEMPLATE_ID,
+  buildSystemPrompt,
+  buildTemplateSystemPrompt,
+  buildTemplateUserText,
+  buildUserText,
+  getBuiltinTemplate,
+} from '../src/lib/prompt-templates.js';
 
 describe('buildSystemPrompt', () => {
   it('中文模板要求简体中文输出', () => {
@@ -34,5 +42,52 @@ describe('buildUserText', () => {
     expect(zh.length).toBeGreaterThan(0);
     expect(en.length).toBeGreaterThan(0);
     expect(zh).not.toBe(en);
+  });
+});
+
+describe('BUILTIN_TEMPLATES', () => {
+  it('共 7 套内置模板，id 唯一且均为 builtin', () => {
+    expect(BUILTIN_TEMPLATES).toHaveLength(7);
+    const ids = BUILTIN_TEMPLATES.map((t) => t.id);
+    expect(new Set(ids).size).toBe(ids.length);
+    expect(BUILTIN_TEMPLATES.every((t) => t.builtin)).toBe(true);
+  });
+
+  it('包含一个 JSON 输出模板', () => {
+    const jsonTemplates = BUILTIN_TEMPLATES.filter((t) => t.outputFormat === 'json');
+    expect(jsonTemplates).toHaveLength(1);
+    expect(jsonTemplates[0]!.systemPrompt).toContain('"prompt"');
+  });
+
+  it('占位符被正确替换且无残留', () => {
+    for (const template of BUILTIN_TEMPLATES) {
+      const zh = buildTemplateSystemPrompt(template, 'zh');
+      const en = buildTemplateSystemPrompt(template, 'en');
+      expect(zh).toContain('Simplified Chinese');
+      expect(en).not.toContain('Simplified Chinese');
+      expect(zh).not.toContain('{outputLanguage}');
+      expect(zh).not.toContain('{lengthHint}');
+      expect(en).not.toContain('{outputLanguage}');
+    }
+  });
+
+  it('中英 user 文本不同且非空', () => {
+    for (const template of BUILTIN_TEMPLATES) {
+      const zh = buildTemplateUserText(template, 'zh');
+      const en = buildTemplateUserText(template, 'en');
+      expect(zh.length).toBeGreaterThan(0);
+      expect(en.length).toBeGreaterThan(0);
+      expect(zh).not.toBe(en);
+    }
+  });
+});
+
+describe('getBuiltinTemplate', () => {
+  it('按 id 取到模板', () => {
+    expect(getBuiltinTemplate(DEFAULT_TEMPLATE_ID).id).toBe(DEFAULT_TEMPLATE_ID);
+  });
+
+  it('未知 id 回退默认模板', () => {
+    expect(getBuiltinTemplate('nope').id).toBe(DEFAULT_TEMPLATE_ID);
   });
 });

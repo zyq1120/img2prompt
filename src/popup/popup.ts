@@ -163,9 +163,7 @@ async function renderTemplateSelect(): Promise<void> {
     const option = document.createElement('option');
     option.value = template.id;
     option.textContent =
-      template.nameI18nKey && t(template.nameI18nKey)
-        ? t(template.nameI18nKey)
-        : template.name;
+      template.nameI18nKey && t(template.nameI18nKey) ? t(template.nameI18nKey) : template.name;
     if (template.outputFormat === 'json') {
       option.textContent += ' · JSON';
     }
@@ -219,17 +217,20 @@ async function handleUpload(file: File): Promise<void> {
     // 存历史（缩略图单独捕获失败不影响）
     try {
       const thumbnail = await fileToCompressedDataUrl(file, THUMBNAIL_EDGE_PX);
-      await addHistoryItem({
+      const historyEntry: Parameters<typeof addHistoryItem>[0] = {
         imageUrl: '',
         source: 'upload',
         thumbnail,
         prompt: result.text,
-        structured: result.format === 'json' ? result.structured : undefined,
         lang: settings.defaultLang,
         model: provider.model,
         providerName: provider.name,
         templateId: template.id,
-      });
+      };
+      if (result.format === 'json') {
+        historyEntry.structured = result.structured;
+      }
+      await addHistoryItem(historyEntry);
       await renderHistory();
     } catch (historyError) {
       console.warn('[img2prompt] 历史记录保存失败', historyError);

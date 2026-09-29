@@ -151,8 +151,7 @@ export const BUILTIN_TEMPLATES: PromptTemplate[] = [
       '- Output ONLY the prompt text, nothing else.',
     ].join('\n'),
     userTextZh: '请仔细观察这张图片，为它生成可用于 AI 绘画的概念艺术提示词。',
-    userTextEn:
-      'Look carefully at this image and generate an AI concept-art prompt for it.',
+    userTextEn: 'Look carefully at this image and generate an AI concept-art prompt for it.',
     outputFormat: 'text',
     builtin: true,
   },
@@ -176,8 +175,7 @@ export const BUILTIN_TEMPLATES: PromptTemplate[] = [
       '- Output ONLY the prompt text, nothing else.',
     ].join('\n'),
     userTextZh: '请仔细观察这张图片，为它生成可用于 AI 绘画的插画风格提示词。',
-    userTextEn:
-      'Look carefully at this image and generate an AI illustration-style prompt for it.',
+    userTextEn: 'Look carefully at this image and generate an AI illustration-style prompt for it.',
     outputFormat: 'text',
     builtin: true,
   },
@@ -207,11 +205,14 @@ export const BUILTIN_TEMPLATES: PromptTemplate[] = [
 
 /** 按 id 取内置模板；找不到时回退默认模板 */
 export function getBuiltinTemplate(id: string): PromptTemplate {
-  return (
+  const found =
     BUILTIN_TEMPLATES.find((t) => t.id === id) ??
-    BUILTIN_TEMPLATES.find((t) => t.id === DEFAULT_TEMPLATE_ID) ??
-    BUILTIN_TEMPLATES[0]
-  );
+    BUILTIN_TEMPLATES.find((t) => t.id === DEFAULT_TEMPLATE_ID);
+  if (!found) {
+    // 防御性分支：BUILTIN_TEMPLATES 为非空常量，不可达
+    throw new Error('[img2prompt] builtin templates missing');
+  }
+  return found;
 }
 
 /** 输出语言名称（拼入 system prompt） */

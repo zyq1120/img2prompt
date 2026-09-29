@@ -17,15 +17,11 @@ import {
   generateImagePrompt,
   makeThumbnail,
 } from '../lib/api.js';
-import {
-  addHistoryItem,
-  getActiveProvider,
-  getSettings,
-  getTemplate,
-} from '../lib/storage.js';
+import { addHistoryItem, getActiveProvider, getSettings, getTemplate } from '../lib/storage.js';
 import type {
   ExtensionMessage,
   HistoryItem,
+  PanelStateMessage,
   PromptLanguage,
   PromptTemplate,
 } from '../lib/types.js';
@@ -178,7 +174,7 @@ interface RunGenerationOptions {
   /** 期望语言（省略时用设置中的默认语言） */
   lang?: PromptLanguage;
   /** 使用的模板 ID（省略时用设置中的当前模板） */
-  templateId?: string;
+  templateId?: string | undefined;
   /** 是否写入历史记录（仅首次识别写，切换语言/重试不写） */
   saveHistory: boolean;
 }
@@ -238,13 +234,16 @@ async function runGeneration(options: RunGenerationOptions): Promise<void> {
       signal: abortController.signal,
     });
 
-    await sendToTab(tabId, {
+    const resultMessage: PanelStateMessage = {
       type: 'IMG2PROMPT_PANEL_STATE',
       state: 'result',
       text: result.text,
-      structured: result.format === 'json' ? result.structured : undefined,
       lang: targetLang,
-    });
+    };
+    if (result.format === 'json') {
+      resultMessage.structured = result.structured;
+    }
+    await sendToTab(tabId, resultMessage);
 
     if (saveHistory) {
       // 缩略图失败不影响主流程，单独捕获
@@ -252,17 +251,20 @@ async function runGeneration(options: RunGenerationOptions): Promise<void> {
         const thumbnail = imageUrl
           ? await makeThumbnail(imageUrl)
           : await downscaleDataUrl(imageDataUrl, THUMBNAIL_EDGE_PX);
-        await addHistoryItem({
+        const historyEntry: Parameters<typeof addHistoryItem>[0] = {
           imageUrl,
           source,
           thumbnail,
           prompt: result.text,
-          structured: result.format === 'json' ? result.structured : undefined,
           lang: targetLang,
           model: provider.model,
           providerName: provider.name,
           templateId: template.id,
-        });
+        };
+        if (result.format === 'json') {
+          historyEntry.structured = result.structured;
+        }
+        await addHistoryItem(historyEntry);
       } catch (historyError) {
         console.warn('[img2prompt] 历史记录保存失败', historyError);
       }

@@ -10,12 +10,7 @@ import {
   buildTemplateUserText,
   getBuiltinTemplate,
 } from './prompt-templates.js';
-import type {
-  OutputFormat,
-  PromptLanguage,
-  PromptTemplate,
-  StructuredPrompt,
-} from './types.js';
+import type { OutputFormat, PromptLanguage, PromptTemplate, StructuredPrompt } from './types.js';
 
 /** 默认请求超时：60 秒 */
 const DEFAULT_TIMEOUT_MS = 60_000;
@@ -48,8 +43,7 @@ export interface GenerateImagePromptOptions {
 
 /** 生成结果：文本模式或结构化 JSON 模式 */
 export type GenerateResult =
-  | { format: 'text'; text: string }
-  | { format: 'json'; text: string; structured: StructuredPrompt };
+  { format: 'text'; text: string } | { format: 'json'; text: string; structured: StructuredPrompt };
 
 export interface ConnectionTestOptions {
   apiKey: string;
@@ -205,7 +199,10 @@ export function parseStructuredPrompt(raw: string): StructuredPrompt {
 /** 宽容地把未知值转为字符串数组（兼容逗号分隔字符串） */
 function toStringArray(value: unknown): string[] {
   if (Array.isArray(value)) {
-    return value.filter((v): v is string => typeof v === 'string').map((s) => s.trim()).filter(Boolean);
+    return value
+      .filter((v): v is string => typeof v === 'string')
+      .map((s) => s.trim())
+      .filter(Boolean);
   }
   if (typeof value === 'string') {
     return value

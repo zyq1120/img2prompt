@@ -29,7 +29,7 @@ let currentTemplateId = '';
 /** 用户点击"取消"后等待 background 回执的标记 */
 let pendingCancel = false;
 /** 上一次成功的结果（取消时恢复用） */
-let lastGoodResult: { text: string; structured?: StructuredPrompt } | null = null;
+let lastGoodResult: { text: string; structured: StructuredPrompt | undefined } | null = null;
 
 /** 入口：监听来自 background 的消息 */
 chrome.runtime.onMessage.addListener((message: ExtensionMessage) => {
@@ -51,8 +51,11 @@ chrome.runtime.onMessage.addListener((message: ExtensionMessage) => {
     pendingCancel = false;
     setState(message.state, message.text, message.error);
   } else if (message.type === 'IMG2PROMPT_CANCELLED') {
-    // 用户主动取消的回执：面板已在点击时本地恢复，这里仅清标记
-    pendingCancel = false;
+    if (pendingCancel) {
+      // 用户主动取消的回执：面板已在点击时本地恢复，这里仅清标记
+      pendingCancel = false;
+    }
+    // 否则是旧请求被新请求取代，其中止回执无需处理
   } else if (message.type === 'IMG2PROMPT_REGION_SELECT') {
     startRegionSelect({
       onDone: (rect, devicePixelRatio) => {
