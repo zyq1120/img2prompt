@@ -188,7 +188,7 @@ button.ghost[hidden] {
   display: block;
   font-size: 36px;
   margin-bottom: 12px;
-  background: linear-gradient(135deg, #0a84ff, #5e5ce6);
+  background: linear-gradient(135deg, #4da6ff, #007aff);
   -webkit-background-clip: text;
   background-clip: text;
   -webkit-text-fill-color: transparent;

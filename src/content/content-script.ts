@@ -219,7 +219,7 @@ function panelTemplate(): string {
       width: 24px; height: 24px; flex: none;
       display: inline-flex; align-items: center; justify-content: center;
       border-radius: 7px;
-      background: linear-gradient(135deg, #0a84ff, #5e5ce6);
+      background: linear-gradient(135deg, #4da6ff, #007aff);
       box-shadow: 0 2px 6px rgba(10, 132, 255, 0.35);
     }
     .ip-logo svg { width: 14px; height: 14px; fill: #fff; }
