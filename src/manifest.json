@@ -24,10 +24,7 @@
   },
   "default_locale": "zh_CN",
   "description": "__MSG_appDescription__",
-  "host_permissions": [
-    "https://*/*",
-    "http://*/*"
-  ],
+  "host_permissions": ["https://*/*", "http://*/*"],
   "icons": {
     "128": "assets/icons/icon-128.png",
     "16": "assets/icons/icon-16.png",
@@ -38,11 +35,6 @@
   "minimum_chrome_version": "116",
   "name": "__MSG_appName__",
   "options_page": "options/options.html",
-  "permissions": [
-    "contextMenus",
-    "storage",
-    "scripting",
-    "activeTab"
-  ],
-  "version": "0.3.0"
+  "permissions": ["contextMenus", "storage", "scripting", "activeTab"],
+  "version": "3.1.0"
 }
