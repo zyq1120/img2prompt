@@ -96,11 +96,13 @@ scripts/build.mjs    # esbuild 构建脚本
 
 v1 坚持最短流程：**右键即分析 → 页内悬浮卡展示 → 一键复制 → 中英切换**。
 
-## Roadmap（v2 候选）
+## Roadmap
 
-- 截图选区识别、拖放 / 本地上传图片
-- 预设提示词模板、收藏 / 搜索历史
-- 多 provider 配置管理、请求取消、结构化 JSON 输出
+- ✅ v0.1.0：右键生成、中英切换、悬浮面板、BYOK、本地历史
+- 🚧 v0.2.0（开发中）：多服务商管理、提示词模板、框选截图 + 快捷键、popup 上传、历史搜索/收藏、请求取消、JSON 结构化输出
+- 🔮 v0.3.0（候选）：Chrome Web Store 上架、侧边栏历史、批量识别
+
+文档：[需求](docs/REQUIREMENTS.md) · [架构](docs/ARCHITECTURE.md) · [用户手册](docs/USER-GUIDE.md) · [已知问题](docs/KNOWN-ISSUES.md) · [更新日志](CHANGELOG.md) · [贡献指南](CONTRIBUTING.md)
 
 ## License
 
