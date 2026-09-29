@@ -207,9 +207,6 @@ async function runGeneration(options: RunGenerationOptions): Promise<void> {
         source = cached.source;
       }
     }
-    if (!imageDataUrl) {
-      throw new VisionApiError('缺少图片信息，请重新在图片上右键再试');
-    }
 
     await sendToTab(tabId, {
       type: 'IMG2PROMPT_PANEL_STATE',
@@ -217,11 +214,14 @@ async function runGeneration(options: RunGenerationOptions): Promise<void> {
       lang: targetLang,
     });
 
-    if (!options.imageDataUrl && imageUrl) {
+    if (!imageDataUrl && imageUrl) {
       imageDataUrl = await fetchImageAsDataUrl(imageUrl);
       tabImageCache.set(tabId, { imageUrl, imageDataUrl, source });
-    } else if (options.imageDataUrl) {
+    } else if (imageDataUrl) {
       tabImageCache.set(tabId, { imageUrl, imageDataUrl, source });
+    }
+    if (!imageDataUrl) {
+      throw new VisionApiError('缺少图片信息，请重新在图片上右键再试');
     }
 
     const result = await generateImagePrompt({
