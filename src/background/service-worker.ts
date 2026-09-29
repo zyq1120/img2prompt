@@ -2,63 +2,92 @@
  * Background service worker：插件的大脑。
  *
  * 链路：
- * 1. 用户在图片上右键 → 上下文菜单点击
- * 2. 向当前 tab 注入 content script，打开悬浮面板（loading）
- * 3. 下载图片并压缩为 dataURL（绕过页面 CORS）
- * 4. 调用用户配置的视觉模型生成提示词
- * 5. 把结果推送到面板，并写入本地历史记录
+ * 1. 用户在图片上右键 → 上下文菜单点击 → 下载压缩 → 调模型 → 推送面板 → 存历史
+ * 2. 用户在页面上右键"框选截图" → 选区 overlay → captureVisibleTab 裁剪 → 同上链路
+ * 3. 面板内的语言切换 / 模板切换 / 重试：复用 tab 缓存图片，不重复下载
+ * 4. 面板内的"取消"：中止该 tab 正在进行的模型请求
  *
- * 面板内的「语言切换 / 重试」会复用该 tab 缓存的图片，不重复下载。
+ * 多服务商：每次生成按设置中的当前服务商解析；面板/popup 可切换。
  */
 import {
   VisionApiError,
+  cropScreenshot,
+  downscaleDataUrl,
   fetchImageAsDataUrl,
   generateImagePrompt,
   makeThumbnail,
 } from '../lib/api.js';
-import { addHistoryItem, getSettings } from '../lib/storage.js';
-import type { ExtensionMessage, PromptLanguage } from '../lib/types.js';
+import {
+  addHistoryItem,
+  getActiveProvider,
+  getSettings,
+  getTemplate,
+} from '../lib/storage.js';
+import type {
+  ExtensionMessage,
+  HistoryItem,
+  PromptLanguage,
+  PromptTemplate,
+} from '../lib/types.js';
 
-/** 右键菜单项 ID */
-const CONTEXT_MENU_ID = 'img2prompt-generate';
+/** 右键菜单项 ID：图片识别 */
+const CONTEXT_MENU_IMAGE_ID = 'img2prompt-generate';
+/** 右键菜单项 ID：框选截图识别 */
+const CONTEXT_MENU_REGION_ID = 'img2prompt-region';
+/** 历史缩略图长边（选区/上传场景） */
+const THUMBNAIL_EDGE_PX = 160;
 
 /** 每个 tab 最近一次识别的图片上下文（供语言切换/重试复用，避免重复下载） */
 interface TabImageContext {
   imageUrl: string;
   imageDataUrl: string;
+  source: HistoryItem['source'];
 }
 
 const tabImageCache = new Map<number, TabImageContext>();
+/** 每个 tab 正在进行的生成请求的取消控制器 */
+const tabAbortControllers = new Map<number, AbortController>();
 
 chrome.runtime.onInstalled.addListener(() => {
-  chrome.contextMenus.create({
-    contexts: ['image'],
-    id: CONTEXT_MENU_ID,
-    title: chrome.i18n.getMessage('contextMenuTitle'),
-  });
+  createContextMenus();
 });
 
 // 兜底：如果菜单因 service worker 重启丢失，在启动时重建
 chrome.runtime.onStartup.addListener(() => {
   chrome.contextMenus.removeAll(() => {
-    chrome.contextMenus.create({
-      contexts: ['image'],
-      id: CONTEXT_MENU_ID,
-      title: chrome.i18n.getMessage('contextMenuTitle'),
-    });
+    createContextMenus();
   });
 });
 
-// tab 关闭时清理图片缓存，避免内存泄漏
+function createContextMenus(): void {
+  chrome.contextMenus.create({
+    contexts: ['image'],
+    id: CONTEXT_MENU_IMAGE_ID,
+    title: chrome.i18n.getMessage('contextMenuTitle'),
+  });
+  chrome.contextMenus.create({
+    contexts: ['page'],
+    id: CONTEXT_MENU_REGION_ID,
+    title: chrome.i18n.getMessage('contextMenuRegionTitle'),
+  });
+}
+
+// tab 关闭时清理缓存与控制器，避免内存泄漏
 chrome.tabs.onRemoved.addListener((tabId) => {
   tabImageCache.delete(tabId);
+  tabAbortControllers.get(tabId)?.abort();
+  tabAbortControllers.delete(tabId);
 });
 
 chrome.contextMenus.onClicked.addListener((info, tab) => {
-  if (info.menuItemId !== CONTEXT_MENU_ID || tab?.id === undefined || !info.srcUrl) {
+  if (tab?.id === undefined) {
     return;
   }
-  void handleMenuClick(tab.id, info.srcUrl);
+  if (info.menuItemId === CONTEXT_MENU_IMAGE_ID && info.srcUrl) {
+    void handleMenuClick(tab.id, info.srcUrl);
+  } else if (info.menuItemId === CONTEXT_MENU_REGION_ID) {
+    void startRegionSelect(tab.id);
+  }
 });
 
 chrome.runtime.onMessage.addListener((message: ExtensionMessage, sender) => {
@@ -67,8 +96,17 @@ chrome.runtime.onMessage.addListener((message: ExtensionMessage, sender) => {
     return;
   }
   if (message.type === 'IMG2PROMPT_GENERATE') {
-    // 面板内的语言切换 / 重试：不写历史，只更新面板
-    void runGeneration({ tabId, lang: message.lang, saveHistory: false });
+    // 面板内的语言/模板切换 / 重试：不写历史，只更新面板
+    void runGeneration({
+      tabId,
+      lang: message.lang,
+      templateId: message.templateId,
+      saveHistory: false,
+    });
+  } else if (message.type === 'IMG2PROMPT_CANCEL') {
+    cancelGeneration(tabId);
+  } else if (message.type === 'IMG2PROMPT_REGION_DONE') {
+    void handleRegionDone(tabId, message.rect, message.devicePixelRatio);
   } else if (message.type === 'IMG2PROMPT_OPEN_OPTIONS') {
     void chrome.runtime.openOptionsPage();
   }
@@ -76,26 +114,71 @@ chrome.runtime.onMessage.addListener((message: ExtensionMessage, sender) => {
 
 /** 右键菜单点击：注入面板 → 开始识别主流程 */
 async function handleMenuClick(tabId: number, imageUrl: string): Promise<void> {
-  try {
-    await chrome.scripting.executeScript({
-      target: { tabId },
-      files: ['content/content-script.js'],
-    });
-  } catch (error) {
-    // chrome://、edge://、Chrome Web Store 等受限页面无法注入
-    console.warn('[img2prompt] content script 注入失败，可能是受限页面', error);
+  const injected = await ensureContentScript(tabId);
+  if (!injected) {
     return;
   }
   await sendToTab(tabId, { type: 'IMG2PROMPT_START', imageUrl });
-  await runGeneration({ tabId, imageUrl, saveHistory: true });
+  await runGeneration({ tabId, imageUrl, source: 'context-menu', saveHistory: true });
+}
+
+/** 框选截图：注入 content script 并让它展示选区 overlay */
+async function startRegionSelect(tabId: number): Promise<void> {
+  const injected = await ensureContentScript(tabId);
+  if (!injected) {
+    return;
+  }
+  await sendToTab(tabId, { type: 'IMG2PROMPT_REGION_SELECT' });
+}
+
+/** 选区完成：截取可见区域 → 裁剪 → 走标准生成链路 */
+async function handleRegionDone(
+  tabId: number,
+  rect: { x: number; y: number; width: number; height: number },
+  devicePixelRatio: number
+): Promise<void> {
+  try {
+    if (rect.width < 4 || rect.height < 4) {
+      throw new VisionApiError('选区太小，请重新框选');
+    }
+    const screenshotDataUrl = await chrome.tabs.captureVisibleTab({
+      format: 'png',
+    });
+    const imageDataUrl = await cropScreenshot(screenshotDataUrl, rect, devicePixelRatio);
+    await sendToTab(tabId, { type: 'IMG2PROMPT_START', imageUrl: '' });
+    await runGeneration({
+      tabId,
+      imageDataUrl,
+      source: 'region',
+      saveHistory: true,
+    });
+  } catch (error) {
+    const message = error instanceof VisionApiError ? error.message : '截图失败，请重试';
+    await sendToTab(tabId, {
+      type: 'IMG2PROMPT_PANEL_STATE',
+      state: 'error',
+      error: message,
+    });
+  }
+}
+
+/** 取消指定 tab 正在进行的生成请求 */
+function cancelGeneration(tabId: number): void {
+  tabAbortControllers.get(tabId)?.abort();
 }
 
 interface RunGenerationOptions {
   tabId: number;
   /** 新图片的 URL（菜单点击时传入；面板重试/切语言时省略，用缓存） */
   imageUrl?: string;
+  /** 直接传入已压缩的图片 dataURL（选区截图场景） */
+  imageDataUrl?: string;
+  /** 图片来源，用于历史记录 */
+  source?: HistoryItem['source'];
   /** 期望语言（省略时用设置中的默认语言） */
   lang?: PromptLanguage;
+  /** 使用的模板 ID（省略时用设置中的当前模板） */
+  templateId?: string;
   /** 是否写入历史记录（仅首次识别写，切换语言/重试不写） */
   saveHistory: boolean;
 }
@@ -104,20 +187,31 @@ interface RunGenerationOptions {
 async function runGeneration(options: RunGenerationOptions): Promise<void> {
   const { tabId, saveHistory } = options;
   const settings = await getSettings();
+  const provider = getActiveProvider(settings);
+  const template: PromptTemplate = await getTemplate(
+    options.templateId ?? settings.activeTemplateId
+  );
   const targetLang = options.lang ?? settings.defaultLang;
 
-  try {
-    let imageUrl = options.imageUrl;
-    let imageDataUrl: string | undefined;
+  // 同一 tab 同一时间只允许一个生成请求：先取消旧的
+  tabAbortControllers.get(tabId)?.abort();
+  const abortController = new AbortController();
+  tabAbortControllers.set(tabId, abortController);
 
-    if (!imageUrl) {
+  try {
+    let imageUrl = options.imageUrl ?? '';
+    let imageDataUrl = options.imageDataUrl;
+    let source: HistoryItem['source'] = options.source ?? 'context-menu';
+
+    if (!imageDataUrl) {
       const cached = tabImageCache.get(tabId);
       if (cached) {
         imageUrl = cached.imageUrl;
         imageDataUrl = cached.imageDataUrl;
+        source = cached.source;
       }
     }
-    if (!imageUrl) {
+    if (!imageDataUrl) {
       throw new VisionApiError('缺少图片信息，请重新在图片上右键再试');
     }
 
@@ -127,42 +221,59 @@ async function runGeneration(options: RunGenerationOptions): Promise<void> {
       lang: targetLang,
     });
 
-    if (!imageDataUrl) {
+    if (!options.imageDataUrl && imageUrl) {
       imageDataUrl = await fetchImageAsDataUrl(imageUrl);
-      tabImageCache.set(tabId, { imageUrl, imageDataUrl });
+      tabImageCache.set(tabId, { imageUrl, imageDataUrl, source });
+    } else if (options.imageDataUrl) {
+      tabImageCache.set(tabId, { imageUrl, imageDataUrl, source });
     }
 
-    const prompt = await generateImagePrompt({
-      apiKey: settings.apiKey,
-      baseUrl: settings.baseUrl,
-      model: settings.model,
+    const result = await generateImagePrompt({
+      apiKey: provider.apiKey,
+      baseUrl: provider.baseUrl,
+      model: provider.model,
       imageDataUrl,
       lang: targetLang,
+      template,
+      signal: abortController.signal,
     });
 
     await sendToTab(tabId, {
       type: 'IMG2PROMPT_PANEL_STATE',
       state: 'result',
-      text: prompt,
+      text: result.text,
+      structured: result.format === 'json' ? result.structured : undefined,
       lang: targetLang,
     });
 
     if (saveHistory) {
       // 缩略图失败不影响主流程，单独捕获
       try {
-        const thumbnail = await makeThumbnail(imageUrl);
+        const thumbnail = imageUrl
+          ? await makeThumbnail(imageUrl)
+          : await downscaleDataUrl(imageDataUrl, THUMBNAIL_EDGE_PX);
         await addHistoryItem({
           imageUrl,
+          source,
           thumbnail,
-          prompt,
+          prompt: result.text,
+          structured: result.format === 'json' ? result.structured : undefined,
           lang: targetLang,
-          model: settings.model,
+          model: provider.model,
+          providerName: provider.name,
+          templateId: template.id,
         });
       } catch (historyError) {
         console.warn('[img2prompt] 历史记录保存失败', historyError);
       }
     }
   } catch (error) {
+    if (abortController.signal.aborted && error instanceof VisionApiError) {
+      // 用户主动取消：通知面板恢复之前状态，而非展示红色错误
+      tabAbortControllers.delete(tabId);
+      await sendToTab(tabId, { type: 'IMG2PROMPT_CANCELLED' });
+      return;
+    }
     const message = error instanceof VisionApiError ? error.message : '未知错误，请重试';
     await sendToTab(tabId, {
       type: 'IMG2PROMPT_PANEL_STATE',
@@ -170,6 +281,25 @@ async function runGeneration(options: RunGenerationOptions): Promise<void> {
       error: message,
       lang: targetLang,
     });
+  } finally {
+    if (tabAbortControllers.get(tabId) === abortController) {
+      tabAbortControllers.delete(tabId);
+    }
+  }
+}
+
+/** 注入 content script（失败时返回 false，如 chrome:// 等受限页面） */
+async function ensureContentScript(tabId: number): Promise<boolean> {
+  try {
+    await chrome.scripting.executeScript({
+      target: { tabId },
+      files: ['content/content-script.js'],
+    });
+    return true;
+  } catch (error) {
+    // chrome://、edge://、Chrome Web Store 等受限页面无法注入
+    console.warn('[img2prompt] content script 注入失败，可能是受限页面', error);
+    return false;
   }
 }
 
@@ -189,6 +319,12 @@ async function sendToTab(tabId: number, message: ExtensionMessage): Promise<void
  */
 (globalThis as unknown as { __img2promptE2E?: unknown }).__img2promptE2E = {
   handleMenuClick: (tabId: number, imageUrl: string) => handleMenuClick(tabId, imageUrl),
+  handleRegionDone: (
+    tabId: number,
+    rect: { x: number; y: number; width: number; height: number },
+    devicePixelRatio: number
+  ) => handleRegionDone(tabId, rect, devicePixelRatio),
+  cancelGeneration: (tabId: number) => cancelGeneration(tabId),
 };
 
 export {};

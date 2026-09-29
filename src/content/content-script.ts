@@ -1,17 +1,20 @@
 /**
- * Content script：在页面右下角展示悬浮结果面板。
+ * Content script：在页面右下角展示悬浮结果面板，并承载选区截图 overlay。
  *
- * 使用 Shadow DOM 隔离样式，避免被宿主页面 CSS 污染。
+ * 使用 Shadow DOM 隔离面板样式，避免被宿主页面 CSS 污染。
  * 只负责 UI 渲染；图片下载与模型调用全部在 background 完成，
  * 通过 chrome.runtime 消息与 background 通信。
  */
 import { applyI18n, t } from '../lib/i18n.js';
+import { getSettings, getTemplates, saveSettings } from '../lib/storage.js';
 import type {
   ExtensionMessage,
-  GenerateRequestMessage,
   PanelState,
   PromptLanguage,
+  PromptTemplate,
+  StructuredPrompt,
 } from '../lib/types.js';
+import { startRegionSelect } from './region-selector.js';
 
 /** 面板根元素 ID（页面内唯一） */
 const PANEL_ROOT_ID = 'img2prompt-panel-root';
@@ -20,12 +23,21 @@ const COPIED_TIP_DURATION_MS = 1500;
 
 let currentLang: PromptLanguage = 'zh';
 let currentText = '';
+let currentStructured: StructuredPrompt | undefined;
 let currentState: PanelState = 'loading';
+let currentTemplateId = '';
+/** 用户点击"取消"后等待 background 回执的标记 */
+let pendingCancel = false;
+/** 上一次成功的结果（取消时恢复用） */
+let lastGoodResult: { text: string; structured?: StructuredPrompt } | null = null;
 
 /** 入口：监听来自 background 的消息 */
 chrome.runtime.onMessage.addListener((message: ExtensionMessage) => {
   if (message.type === 'IMG2PROMPT_START') {
+    lastGoodResult = null;
+    pendingCancel = false;
     showPanel();
+    void syncTemplateSelect();
     setState('loading');
   } else if (message.type === 'IMG2PROMPT_PANEL_STATE') {
     if (message.lang) {
@@ -33,8 +45,27 @@ chrome.runtime.onMessage.addListener((message: ExtensionMessage) => {
     }
     if (message.state === 'result' && message.text) {
       currentText = message.text;
+      currentStructured = message.structured;
+      lastGoodResult = { text: message.text, structured: message.structured };
     }
+    pendingCancel = false;
     setState(message.state, message.text, message.error);
+  } else if (message.type === 'IMG2PROMPT_CANCELLED') {
+    // 用户主动取消的回执：面板已在点击时本地恢复，这里仅清标记
+    pendingCancel = false;
+  } else if (message.type === 'IMG2PROMPT_REGION_SELECT') {
+    startRegionSelect({
+      onDone: (rect, devicePixelRatio) => {
+        chrome.runtime.sendMessage({
+          type: 'IMG2PROMPT_REGION_DONE',
+          rect,
+          devicePixelRatio,
+        });
+      },
+      onCancel: () => {
+        // Esc / 误触：静默收起，不打扰用户
+      },
+    });
   }
 });
 
@@ -53,6 +84,39 @@ function showPanel(): void {
   syncLangButtons(shadow);
 }
 
+/** 同步模板下拉框的选项与当前值 */
+async function syncTemplateSelect(): Promise<void> {
+  const shadow = getShadow();
+  const select = shadow?.querySelector<HTMLSelectElement>('.ip-template');
+  if (!select) {
+    return;
+  }
+  const [templates, settings] = await Promise.all([getTemplates(), getSettings()]);
+  currentTemplateId = settings.activeTemplateId;
+  select.innerHTML = '';
+  for (const template of templates) {
+    const option = document.createElement('option');
+    option.value = template.id;
+    option.textContent = templateDisplayName(template);
+    if (template.outputFormat === 'json') {
+      option.textContent += ' · JSON';
+    }
+    select.appendChild(option);
+  }
+  select.value = currentTemplateId;
+}
+
+/** 模板显示名：内置走 i18n，自定义用名称 */
+function templateDisplayName(template: PromptTemplate): string {
+  if (template.nameI18nKey) {
+    const localized = t(template.nameI18nKey);
+    if (localized) {
+      return localized;
+    }
+  }
+  return template.name;
+}
+
 /** 切换面板状态并重渲染 body */
 function setState(state: PanelState, text?: string, error?: string): void {
   currentState = state;
@@ -65,13 +129,17 @@ function setState(state: PanelState, text?: string, error?: string): void {
     return;
   }
   if (state === 'loading') {
-    body.innerHTML = `<div class="ip-loading"><span class="ip-spinner"></span><span>${escapeHtml(t('panelLoading'))}</span></div>`;
+    body.innerHTML = [
+      `<div class="ip-loading"><span class="ip-spinner"></span><span>${escapeHtml(t('panelLoading'))}</span></div>`,
+      `<div class="ip-loading-actions"><button class="ip-btn ip-cancel">${escapeHtml(t('panelCancel'))}</button></div>`,
+    ].join('');
+    shadow.querySelector('.ip-cancel')?.addEventListener('click', cancelGeneration);
+    setCopyEnabled(shadow, false);
   } else if (state === 'result') {
-    body.innerHTML = `<pre class="ip-result">${escapeHtml(text ?? currentText)}</pre>`;
-    const copyBtn = shadow.querySelector<HTMLButtonElement>('.ip-copy');
-    if (copyBtn) {
-      copyBtn.disabled = false;
-    }
+    body.innerHTML = currentStructured
+      ? renderStructured(currentStructured)
+      : `<pre class="ip-result">${escapeHtml(text ?? currentText)}</pre>`;
+    setCopyEnabled(shadow, true);
   } else {
     const goSettings = errorNeedsSettings(error);
     body.innerHTML = [
@@ -86,11 +154,39 @@ function setState(state: PanelState, text?: string, error?: string): void {
     ].join('');
     shadow
       .querySelector('.ip-retry')
-      ?.addEventListener('click', () => requestGenerate(currentLang));
+      ?.addEventListener('click', () => requestGenerate(currentLang, currentTemplateId));
     shadow.querySelector('.ip-goto-settings')?.addEventListener('click', () => {
       chrome.runtime.sendMessage({ type: 'IMG2PROMPT_OPEN_OPTIONS' });
     });
+    setCopyEnabled(shadow, false);
   }
+}
+
+/** 渲染结构化 JSON 结果 */
+function renderStructured(structured: StructuredPrompt): string {
+  const rows: string[] = [];
+  if (structured.style) {
+    rows.push(renderKv(t('panelJsonStyle'), structured.style));
+  }
+  if (structured.mood) {
+    rows.push(renderKv(t('panelJsonMood'), structured.mood));
+  }
+  if (structured.colors.length > 0) {
+    rows.push(renderKv(t('panelJsonColors'), structured.colors.join(' · ')));
+  }
+  const tags =
+    structured.tags.length > 0
+      ? `<div class="ip-tags">${structured.tags.map((tag) => `<span class="ip-tag">${escapeHtml(tag)}</span>`).join('')}</div>`
+      : '';
+  return [
+    `<pre class="ip-result">${escapeHtml(currentText)}</pre>`,
+    rows.length > 0 ? `<div class="ip-kv-list">${rows.join('')}</div>` : '',
+    tags,
+  ].join('');
+}
+
+function renderKv(label: string, value: string): string {
+  return `<div class="ip-kv"><span class="ip-kv-label">${escapeHtml(label)}</span><span class="ip-kv-value">${escapeHtml(value)}</span></div>`;
 }
 
 /** 绑定面板内按钮事件 */
@@ -106,10 +202,26 @@ function bindEvents(shadow: ShadowRoot): void {
         syncLangButtons(shadow);
         // 只有已有结果（或出错）时才重新请求；loading 中切换仅改语言偏好
         if (currentState !== 'loading') {
-          requestGenerate(lang);
+          requestGenerate(lang, currentTemplateId);
         }
       }
     });
+  });
+  shadow.querySelector('.ip-template')?.addEventListener('change', (event) => {
+    const select = event.currentTarget as HTMLSelectElement;
+    const templateId = select.value;
+    if (templateId && templateId !== currentTemplateId) {
+      currentTemplateId = templateId;
+      // 持久化为默认模板，保持与设置页一致
+      void (async () => {
+        const settings = await getSettings();
+        settings.activeTemplateId = templateId;
+        await saveSettings(settings);
+      })();
+      if (currentState !== 'loading') {
+        requestGenerate(currentLang, templateId);
+      }
+    }
   });
   shadow.querySelector('.ip-copy')?.addEventListener('click', (event) => {
     // 注意：必须在 await 之前捕获按钮引用；await 之后 event.currentTarget 已被回收为 null
@@ -127,14 +239,31 @@ function bindEvents(shadow: ShadowRoot): void {
   });
 }
 
+/** 用户点击取消：本地立即恢复上一次状态，并通知 background 中止请求 */
+function cancelGeneration(): void {
+  pendingCancel = true;
+  chrome.runtime.sendMessage({ type: 'IMG2PROMPT_CANCEL' });
+  const shadow = getShadow();
+  if (!shadow) {
+    return;
+  }
+  if (lastGoodResult) {
+    currentText = lastGoodResult.text;
+    currentStructured = lastGoodResult.structured;
+    setState('result', currentText);
+  } else {
+    document.getElementById(PANEL_ROOT_ID)?.remove();
+  }
+}
+
 /** 向 background 请求（重新）生成提示词 */
-function requestGenerate(lang: PromptLanguage): void {
+function requestGenerate(lang: PromptLanguage, templateId: string): void {
   setState('loading');
-  const message: GenerateRequestMessage = {
+  chrome.runtime.sendMessage({
     type: 'IMG2PROMPT_GENERATE',
     lang,
-  };
-  chrome.runtime.sendMessage(message);
+    templateId,
+  });
 }
 
 /** 同步语言切换按钮的高亮状态 */
@@ -142,6 +271,14 @@ function syncLangButtons(shadow: ShadowRoot): void {
   shadow.querySelectorAll<HTMLButtonElement>('.ip-lang button').forEach((btn) => {
     btn.classList.toggle('active', btn.dataset.lang === currentLang);
   });
+}
+
+/** 设置复制按钮可用状态 */
+function setCopyEnabled(shadow: ShadowRoot, enabled: boolean): void {
+  const copyBtn = shadow.querySelector<HTMLButtonElement>('.ip-copy');
+  if (copyBtn) {
+    copyBtn.disabled = !enabled;
+  }
 }
 
 /** 错误信息是否与缺配置相关（需要引导去设置页） */
@@ -264,8 +401,9 @@ function panelTemplate(): string {
     }
     .ip-loading {
       display: flex; align-items: center; gap: 10px;
-      color: #8e8e93; padding: 20px 4px; font-size: 13px;
+      color: #8e8e93; padding: 20px 4px 8px; font-size: 13px;
     }
+    .ip-loading-actions { display: flex; justify-content: center; padding: 4px 0 12px; }
     .ip-spinner {
       width: 18px; height: 18px; border-radius: 50%; flex: none;
       border: 2px solid rgba(120, 120, 128, 0.2); border-top-color: #007aff;
@@ -275,11 +413,32 @@ function panelTemplate(): string {
     .ip-error-title { font-weight: 600; font-size: 14px; color: #ff3b30; margin-bottom: 6px; }
     .ip-error-msg { color: #3c3c43; line-height: 1.6; margin-bottom: 12px; font-size: 13px; }
     .ip-error-actions { display: flex; gap: 8px; }
+    .ip-kv-list { margin-top: 12px; display: flex; flex-direction: column; gap: 6px; }
+    .ip-kv {
+      display: flex; gap: 8px; font-size: 12px; line-height: 1.5;
+      background: rgba(120, 120, 128, 0.1); border-radius: 8px; padding: 6px 10px;
+    }
+    .ip-kv-label { flex: none; color: #8e8e93; }
+    .ip-kv-value { color: #1c1c1e; word-break: break-word; }
+    .ip-tags { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
+    .ip-tag {
+      font-size: 12px; color: #007aff;
+      background: rgba(0, 122, 255, 0.1); border-radius: 20px; padding: 3px 10px;
+      word-break: break-word;
+    }
     .ip-footer {
       padding: 10px 12px;
       border-top: 0.5px solid rgba(60, 60, 67, 0.12);
-      display: flex; justify-content: flex-end;
+      display: flex; align-items: center; gap: 8px;
     }
+    .ip-template {
+      flex: 1; min-width: 0;
+      font-family: inherit; font-size: 12px; color: #3c3c43;
+      background: rgba(120, 120, 128, 0.12);
+      border: 0; border-radius: 8px; padding: 7px 8px; cursor: pointer;
+      text-overflow: ellipsis;
+    }
+    .ip-template:focus-visible { outline: 2px solid #007aff; outline-offset: -2px; }
     .ip-btn, .ip-copy {
       border: 0; border-radius: 10px; cursor: pointer; font-family: inherit;
       padding: 7px 16px; font-size: 13px; font-weight: 600;
@@ -288,7 +447,7 @@ function panelTemplate(): string {
     .ip-btn:active, .ip-copy:active:not(:disabled) { transform: scale(0.97); }
     .ip-btn { background: rgba(120, 120, 128, 0.16); color: #007aff; }
     .ip-btn:hover { filter: brightness(0.96); }
-    .ip-copy { background: #007aff; color: #fff; box-shadow: 0 2px 8px rgba(0, 122, 255, 0.35); }
+    .ip-copy { background: #007aff; color: #fff; box-shadow: 0 2px 8px rgba(0, 122, 255, 0.35); flex: none; }
     .ip-copy:hover:not(:disabled) { filter: brightness(1.06); }
     .ip-copy:disabled { opacity: 0.45; cursor: default; box-shadow: none; }
     /* 深色模式：Apple HIG 强调的完整 dark appearance */
@@ -309,6 +468,12 @@ function panelTemplate(): string {
       .ip-close:hover { background: rgba(255, 255, 255, 0.24); }
       .ip-result { color: #f2f2f7; }
       .ip-error-msg { color: #ebebf5; }
+      .ip-kv { background: rgba(255, 255, 255, 0.08); }
+      .ip-kv-label { color: #98989f; }
+      .ip-kv-value { color: #f2f2f7; }
+      .ip-tag { color: #0a84ff; background: rgba(10, 132, 255, 0.16); }
+      .ip-template { background: rgba(255, 255, 255, 0.12); color: #ebebf5; }
+      .ip-template option { color: #000; }
       .ip-footer { border-top-color: rgba(84, 84, 88, 0.6); }
       .ip-btn { background: rgba(255, 255, 255, 0.14); color: #0a84ff; }
       .ip-copy { background: #0a84ff; }
@@ -334,6 +499,7 @@ function panelTemplate(): string {
     </div>
     <div class="ip-body"></div>
     <div class="ip-footer">
+      <select class="ip-template" data-i18n-title="panelTemplateTitle"></select>
       <button class="ip-copy" data-i18n="panelCopy" disabled></button>
     </div>
   </div>`;

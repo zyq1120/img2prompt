@@ -161,11 +161,17 @@ export interface StartMessage {
   imageUrl: string;
 }
 
+/** background → content script：生成请求已被取消，恢复之前的状态 */
+export interface CancelledMessage {
+  type: 'IMG2PROMPT_CANCELLED';
+}
+
 /** 插件内所有跨上下文消息的联合类型 */
 export type ExtensionMessage =
   | PanelStateMessage
   | GenerateRequestMessage
   | CancelRequestMessage
+  | CancelledMessage
   | RegionSelectMessage
   | RegionDoneMessage
   | StartMessage
