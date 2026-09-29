@@ -4,7 +4,7 @@
 
 ## [Unreleased]
 
-## [0.2.0] — 开发中
+## [0.2.0] — 2026-09-29
 ### Added
 - 快捷键 `Ctrl+Shift+Y`（Mac 上 `⌘+Shift+Y`）触发框选截图识别，可在 `chrome://extensions/shortcuts` 修改
 - 设置页通用区显示快捷键提示
