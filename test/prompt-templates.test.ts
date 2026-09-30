@@ -77,23 +77,24 @@ describe('BUILTIN_TEMPLATES', () => {
         continue;
       }
       const zh = buildTemplateSystemPrompt(template, 'zh');
-      expect(zh).toContain('five concrete visual details');
+      expect(zh).toContain('eight concrete visual details');
+      expect(zh).toContain('Detail density');
       expect(zh).toContain('Prefer completeness over brevity');
       expect(zh).toContain('Output ONLY the prompt text, nothing else.');
     }
   });
 
-  it('v0.3.0：长度提示已加长（中文 150-350 字）', () => {
+  it('v0.3.0：长度提示已加长（中文 300-600 字）', () => {
     const zh = buildTemplateSystemPrompt(getBuiltinTemplate(DEFAULT_TEMPLATE_ID), 'zh');
     const en = buildTemplateSystemPrompt(getBuiltinTemplate(DEFAULT_TEMPLATE_ID), 'en');
-    expect(zh).toContain('150-350 个汉字');
-    expect(en).toContain('120-250 English words');
+    expect(zh).toContain('300-600 个汉字');
+    expect(en).toContain('250-450 English words');
   });
 
   it('v0.3.0：JSON 模板的 prompt 字段同样要求详细', () => {
     const json = BUILTIN_TEMPLATES.find((t) => t.outputFormat === 'json');
     const zh = buildTemplateSystemPrompt(json!, 'zh');
-    expect(zh).toContain('five concrete visual details');
+    expect(zh).toContain('eight concrete visual details');
     expect(zh).toContain('Prefer completeness over brevity');
   });
 

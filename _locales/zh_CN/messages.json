@@ -71,6 +71,9 @@
   "panelLoading": {
     "message": "正在分析图片…"
   },
+  "panelStreaming": {
+    "message": "正在生成提示词…"
+  },
   "panelRetry": {
     "message": "重试"
   },

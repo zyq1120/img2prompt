@@ -100,8 +100,8 @@ export interface HistoryItem {
   createdAt: number;
 }
 
-/** 悬浮面板状态 */
-export type PanelState = 'loading' | 'result' | 'error';
+/** 悬浮面板状态：loading=等待首 token，streaming=流式输出中 */
+export type PanelState = 'loading' | 'streaming' | 'result' | 'error';
 
 /** background → content script：面板状态推送 */
 export interface PanelStateMessage {

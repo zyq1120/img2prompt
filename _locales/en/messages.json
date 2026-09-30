@@ -71,6 +71,9 @@
   "panelLoading": {
     "message": "Analyzing image…"
   },
+  "panelStreaming": {
+    "message": "Generating prompt…"
+  },
   "panelRetry": {
     "message": "Retry"
   },

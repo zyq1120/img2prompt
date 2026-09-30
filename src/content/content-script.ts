@@ -65,6 +65,12 @@ function handleExtensionMessage(message: ExtensionMessage): void {
       currentText = message.text;
       currentStructured = message.structured;
       lastGoodResult = { text: message.text, structured: message.structured };
+    } else if (message.state === 'streaming') {
+      if (!message.text) {
+        // 空增量不重渲染，避免闪烁
+        return;
+      }
+      // 未完成的结果不写入 lastGoodResult（取消时不应恢复半成品）
     }
     pendingCancel = false;
     setState(message.state, message.text, message.error);
@@ -181,6 +187,17 @@ function setState(state: PanelState, text?: string, error?: string): void {
     });
     const refreshBtn = shadow.querySelector('.ip-refresh');
     refreshBtn?.classList.add('spinning');
+    setActionsEnabled(shadow, false);
+  } else if (state === 'streaming') {
+    // 流式增量：直接渲染累计文本 + 生成中指示，操作按钮保持禁用直到完成
+    currentText = text ?? '';
+    currentStructured = undefined;
+    body.innerHTML = [
+      `<pre class="ip-result">${renderRichText(text ?? '')}<span class="ip-caret" aria-hidden="true"></span></pre>`,
+      `<div class="ip-streaming-bar" role="status"><span>${escapeHtml(t('panelStreaming'))}</span><button class="ip-btn ip-cancel">${escapeHtml(t('panelCancel'))}</button></div>`,
+    ].join('');
+    shadow.querySelector('.ip-cancel')?.addEventListener('click', cancelGeneration);
+    shadow.querySelector('.ip-refresh')?.classList.add('spinning');
     setActionsEnabled(shadow, false);
   } else if (state === 'result') {
     body.innerHTML = currentStructured
@@ -482,6 +499,17 @@ function panelTemplate(): string {
       color: #5b6b7c; padding: 26px 8px; font-size: 14px;
     }
     .ip-loading-actions { display: flex; justify-content: center; padding: 0 0 14px; }
+    /* 流式输出：实时文本 + 底部"生成中"条 + 闪烁光标 */
+    .ip-streaming-bar {
+      display: flex; align-items: center; justify-content: center; gap: 10px;
+      padding: 10px 0 14px; color: #5b6b7c; font-size: 13px;
+    }
+    .ip-caret {
+      display: inline-block; width: 8px; height: 1.05em; margin-left: 2px;
+      vertical-align: text-bottom; background: #1f9dff; border-radius: 2px;
+      animation: ip-blink 1s steps(2, start) infinite;
+    }
+    @keyframes ip-blink { to { visibility: hidden; } }
     .ip-spinner {
       width: 20px; height: 20px; border-radius: 50%; flex: none;
       border: 2.5px solid rgba(31, 157, 255, 0.2); border-top-color: #1f9dff;
@@ -567,6 +595,8 @@ function panelTemplate(): string {
       .ip-hero.error { background: rgba(255, 69, 58, 0.1); }
       .ip-result { color: #f2f2f7; }
       .ip-loading { color: #98989f; }
+      .ip-streaming-bar { color: #98989f; }
+      .ip-caret { background: #4fb3ff; }
       .ip-spinner { border-color: rgba(79, 179, 255, 0.2); border-top-color: #4fb3ff; }
       .ip-error-msg { color: #ebebf5; }
       .ip-kv { background: #2c2c2e; }
@@ -589,6 +619,7 @@ function panelTemplate(): string {
     }
     @media (prefers-reduced-motion: reduce) {
       .ip-spinner { animation-duration: 1.6s; }
+      .ip-caret { animation: none; }
       .ip-refresh.spinning svg { animation: none; }
       .ip-lang button { transition: none; }
     }

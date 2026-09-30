@@ -7,6 +7,7 @@ import {
   joinUrl,
   parseJsonResponse,
   parseStructuredPrompt,
+  readSseStream,
   testConnection,
 } from '../src/lib/api.js';
 import { getBuiltinTemplate } from '../src/lib/prompt-templates.js';
@@ -25,6 +26,28 @@ function jsonResponse(body: unknown, status = 200): Response {
     status,
     json: async () => body,
   } as Response;
+}
+
+/** 构造 SSE 流式响应 mock：按给定分块依次推送后关闭 */
+function sseResponse(chunks: string[]): Response {
+  const encoder = new TextEncoder();
+  const stream = new ReadableStream<Uint8Array>({
+    start(controller) {
+      for (const chunk of chunks) {
+        controller.enqueue(encoder.encode(chunk));
+      }
+      controller.close();
+    },
+  });
+  return {
+    ok: true,
+    status: 200,
+    headers: new Headers({ 'content-type': 'text/event-stream' }),
+    body: stream,
+    json: async (): Promise<never> => {
+      throw new Error('not a JSON response');
+    },
+  } as unknown as Response;
 }
 
 beforeEach(() => {
@@ -175,6 +198,104 @@ describe('generateImagePrompt', () => {
     await expect(
       generateImagePrompt({ ...BASE_OPTIONS, template: getBuiltinTemplate('builtin:json') })
     ).rejects.toThrow(/JSON/);
+  });
+
+  it('请求体包含防复读惩罚参数与 2000 max_tokens', async () => {
+    vi.mocked(fetch).mockResolvedValueOnce(
+      jsonResponse({ choices: [{ message: { content: 'prompt' } }] })
+    );
+    await generateImagePrompt(BASE_OPTIONS);
+    const [, init] = vi.mocked(fetch).mock.calls[0] as [string, RequestInit];
+    const body = JSON.parse(init.body as string) as {
+      max_tokens: number;
+      frequency_penalty: number;
+      presence_penalty: number;
+      stream?: boolean;
+    };
+    expect(body.max_tokens).toBe(2000);
+    expect(body.frequency_penalty).toBe(0.6);
+    expect(body.presence_penalty).toBe(0.3);
+    // 未提供 onToken 时不启用流式
+    expect(body.stream).toBeUndefined();
+  });
+
+  it('提供 onToken 时启用流式并推送累计增量', async () => {
+    vi.mocked(fetch).mockResolvedValueOnce(
+      sseResponse([
+        // 故意在 JSON 中间切分，验证跨块缓冲拼接
+        'data: {"choices":[{"delta":{"content":"hello ',
+        '"}}]}\n\ndata: {"choices":[{"delta":{"content":"world"}}]}\n\n',
+        ': ping 心跳行应被忽略\n\ndata: [DONE]\n\n',
+      ])
+    );
+    const seen: string[] = [];
+    const result = await generateImagePrompt({
+      ...BASE_OPTIONS,
+      onToken: (partial) => seen.push(partial),
+    });
+    const [, init] = vi.mocked(fetch).mock.calls[0] as [string, RequestInit];
+    const body = JSON.parse(init.body as string) as { stream?: boolean };
+    expect(body.stream).toBe(true);
+    expect(result.format).toBe('text');
+    expect(result.text).toBe('hello world');
+    expect(seen).toEqual(['hello ', 'hello world']);
+  });
+
+  it('流式响应中断（无 DONE）时返回已收到的部分', async () => {
+    vi.mocked(fetch).mockResolvedValueOnce(
+      sseResponse(['data: {"choices":[{"delta":{"content":"partial"}}]}\n\n'])
+    );
+    const seen: string[] = [];
+    const result = await generateImagePrompt({
+      ...BASE_OPTIONS,
+      onToken: (partial) => seen.push(partial),
+    });
+    expect(result.text).toBe('partial');
+    expect(seen).toEqual(['partial']);
+  });
+
+  it('服务端忽略 stream 参数返回普通 JSON 时 onToken 仍被调用一次', async () => {
+    vi.mocked(fetch).mockResolvedValueOnce(
+      jsonResponse({ choices: [{ message: { content: 'prompt' } }] })
+    );
+    const seen: string[] = [];
+    const result = await generateImagePrompt({
+      ...BASE_OPTIONS,
+      onToken: (partial) => seen.push(partial),
+    });
+    expect(result.text).toBe('prompt');
+    expect(seen).toEqual(['prompt']);
+  });
+
+  it('流式返回空内容时抛"模型返回内容为空"', async () => {
+    vi.mocked(fetch).mockResolvedValueOnce(sseResponse(['data: [DONE]\n\n']));
+    await expect(generateImagePrompt({ ...BASE_OPTIONS, onToken: () => {} })).rejects.toThrow(
+      /内容为空/
+    );
+  });
+});
+
+describe('readSseStream', () => {
+  it('空行、注释与空 delta 不影响解析', async () => {
+    const response = sseResponse([
+      '\n\ndata: {"choices":[{"delta":{"content":"a"}}]}\n\n',
+      'data: {"choices":[{"delta":{}}]}\n\n',
+      ': ping\n\n',
+    ]);
+    const seen: string[] = [];
+    const full = await readSseStream(response, (partial) => seen.push(partial));
+    expect(full).toBe('a');
+    expect(seen).toEqual(['a']);
+  });
+
+  it('损坏的 JSON 块被跳过不中断流', async () => {
+    const response = sseResponse([
+      'data: not-json\n\ndata: {"choices":[{"delta":{"content":"ok"}}]}\n\n',
+    ]);
+    const seen: string[] = [];
+    const full = await readSseStream(response, (partial) => seen.push(partial));
+    expect(full).toBe('ok');
+    expect(seen).toEqual(['ok']);
   });
 });
 

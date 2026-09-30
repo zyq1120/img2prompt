@@ -26,6 +26,7 @@ import type {
   PromptLanguage,
   PromptTemplate,
 } from '../lib/types.js';
+import type { GenerateImagePromptOptions } from '../lib/api.js';
 
 /** 右键菜单项 ID：图片识别 */
 const CONTEXT_MENU_IMAGE_ID = 'img2prompt-generate';
@@ -35,6 +36,11 @@ const CONTEXT_MENU_REGION_ID = 'img2prompt-region';
 const COMMAND_REGION_SELECT_ID = 'region-select';
 /** 历史缩略图长边（选区/上传场景） */
 const THUMBNAIL_EDGE_PX = 160;
+/**
+ * 流式推送节流间隔：模型 token 到达频率很高，节流到 ~7 次/秒推送面板，
+ * 兼顾实时感与消息开销。最终 'result' 消息携带完整文本，不丢字。
+ */
+const STREAM_PUSH_INTERVAL_MS = 150;
 
 /** 每个 tab 最近一次识别的图片上下文（供语言切换/重试复用，避免重复下载） */
 interface TabImageContext {
@@ -269,7 +275,9 @@ async function runGeneration(options: RunGenerationOptions): Promise<void> {
       throw new VisionApiError('缺少图片信息，请重新在图片上右键再试');
     }
 
-    const result = await generateImagePrompt({
+    // 流式推送节流：同一 tab 同时只会有一个生成在跑，函数级变量足够
+    let lastStreamPush = 0;
+    const generateOptions: GenerateImagePromptOptions = {
       apiKey: provider.apiKey,
       baseUrl: provider.baseUrl,
       model: provider.model,
@@ -277,7 +285,24 @@ async function runGeneration(options: RunGenerationOptions): Promise<void> {
       lang: targetLang,
       template,
       signal: abortController.signal,
-    });
+    };
+    if (template.outputFormat === 'text') {
+      // 文本模板启用流式：节流后推送增量，面板实时展示（首 token 通常 2 秒内到达）。
+      // JSON 模板不推送增量（原始 JSON 不宜直接展示），完成后再整体解析渲染。
+      generateOptions.onToken = (partial: string): void => {
+        const now = Date.now();
+        if (now - lastStreamPush >= STREAM_PUSH_INTERVAL_MS) {
+          lastStreamPush = now;
+          void sendToTab(tabId, {
+            type: 'IMG2PROMPT_PANEL_STATE',
+            state: 'streaming',
+            text: partial,
+            lang: targetLang,
+          });
+        }
+      };
+    }
+    const result = await generateImagePrompt(generateOptions);
 
     const resultMessage: PanelStateMessage = {
       type: 'IMG2PROMPT_PANEL_STATE',

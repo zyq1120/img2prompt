@@ -13,16 +13,29 @@ import {
 import { t } from './i18n.js';
 import type { OutputFormat, PromptLanguage, PromptTemplate, StructuredPrompt } from './types.js';
 
-/** 默认请求超时：60 秒 */
+/** 默认请求超时：60 秒（连接测试等轻量请求） */
 const DEFAULT_TIMEOUT_MS = 60_000;
+/**
+ * 生成提示词的默认超时：120 秒。
+ * 详细模板 + 高 max_tokens 下完整生成可能超过 60 秒；流式输出时用户可实时
+ * 看到进度，超时仅作为兜底（首 token 长时间不来或流中途卡死）。
+ */
+const DEFAULT_GENERATE_TIMEOUT_MS = 120_000;
 /** 发送给模型的最大图片边长（像素），超出则等比压缩 */
 export const MAX_IMAGE_EDGE_PX = 1568;
 /** 历史记录缩略图的最大边长（像素） */
 const THUMBNAIL_EDGE_PX = 160;
 /** 压缩为 JPEG 时的质量 */
 const JPEG_QUALITY = 0.85;
-/** 模型最大输出 token 数 */
-const MAX_OUTPUT_TOKENS = 1500;
+/** 模型最大输出 token 数（详细提示词需要更大的输出预算） */
+const MAX_OUTPUT_TOKENS = 2000;
+/**
+ * 防复读惩罚参数：实测可消除部分视觉模型（如 llama-3.2-vision）在长输出时
+ * 陷入的重复 loop（"夜市的灯光，城市的灯光……"式复读），同时不损伤正常输出质量。
+ * 标准 OpenAI 参数，OpenAI / OpenRouter / Groq / Ollama 等兼容接口均支持。
+ */
+const FREQUENCY_PENALTY = 0.6;
+const PRESENCE_PENALTY = 0.3;
 /** 图片下载体积上限：30MB，超过直接拒绝，避免 SW 内存尖峰 */
 const MAX_DOWNLOAD_BYTES = 30 * 1024 * 1024;
 
@@ -52,8 +65,15 @@ export interface GenerateImagePromptOptions {
   lang: PromptLanguage;
   /** 提示词模板（省略时用内置"通用"模板） */
   template?: PromptTemplate;
-  /** 超时毫秒数，默认 60 秒 */
+  /** 超时毫秒数，默认 120 秒 */
   timeoutMs?: number;
+  /**
+   * 流式增量回调：提供时请求自动带上 `stream: true`，收到每个文本增量时
+   * 以"当前累计全文"调用。用于面板实时展示生成进度，解决长生成"一直转圈"问题。
+   * 若服务端不支持流式（忽略 stream 参数返回普通 JSON），会在拿到完整结果后
+   * 调用一次，保证调用方语义一致。
+   */
+  onToken?: (partialText: string) => void;
   /**
    * 外部取消信号（如用户点击"取消"）。
    * 触发时请求被中止并抛出"已取消"错误，与超时区分处理。
@@ -120,13 +140,96 @@ export async function parseJsonResponse(
   }
 }
 
+/**
+ * 判断响应是否为 SSE 流（服务端接受了 `stream: true`）。
+ */
+function isSseResponse(response: Response): boolean {
+  if (!response.body) {
+    return false;
+  }
+  const contentType = response.headers?.get('content-type') ?? '';
+  return contentType.includes('text/event-stream');
+}
+
+/**
+ * 从单个 SSE 事件块中提取文本增量。
+ * 返回 null 表示该事件无有效增量（`[DONE]`、心跳注释、空事件）。
+ */
+function extractSseDelta(eventBlock: string): string | null {
+  let data = '';
+  for (const line of eventBlock.split('\n')) {
+    const trimmed = line.trim();
+    // 以冒号开头的行为注释（如心跳 ": ping"），忽略
+    if (trimmed.startsWith('data:')) {
+      data += trimmed.slice(5).trim();
+    }
+  }
+  if (!data || data === '[DONE]') {
+    return null;
+  }
+  try {
+    const parsed = JSON.parse(data) as {
+      choices?: Array<{ delta?: { content?: string } }>;
+    };
+    return parsed.choices?.[0]?.delta?.content ?? '';
+  } catch {
+    // 某块损坏不致命中断整个流，跳过即可
+    return '';
+  }
+}
+
+/**
+ * 读取 OpenAI 兼容的 SSE 流，拼接 `delta.content` 并在每次收到增量时
+ * 以累计全文调用 `onToken`。
+ *
+ * @returns 累计的完整文本
+ */
+export async function readSseStream(
+  response: Response,
+  onToken: (partialText: string) => void
+): Promise<string> {
+  const reader = response.body!.getReader();
+  const decoder = new TextDecoder();
+  let buffer = '';
+  let fullText = '';
+  const pumpBlock = (block: string): void => {
+    const delta = extractSseDelta(block);
+    if (!delta) {
+      // null（DONE/心跳）或空增量：不推送，避免无意义的重复回调
+      return;
+    }
+    fullText += delta;
+    onToken(fullText);
+  };
+
+  for (;;) {
+    const { done, value } = await reader.read();
+    if (done) {
+      break;
+    }
+    buffer += decoder.decode(value, { stream: true });
+    const blocks = buffer.split('\n\n');
+    buffer = blocks.pop() ?? '';
+    for (const block of blocks) {
+      pumpBlock(block);
+    }
+  }
+  // 尾部不足 `\n\n` 的残余块（如连接直接关闭）也尝试解析
+  if (buffer.trim()) {
+    pumpBlock(buffer);
+  }
+  return fullText;
+}
+
 export async function generateImagePrompt(
   options: GenerateImagePromptOptions
 ): Promise<GenerateResult> {
   const { apiKey, baseUrl, model, imageDataUrl, lang } = options;
-  const timeoutMs = options.timeoutMs ?? DEFAULT_TIMEOUT_MS;
+  const timeoutMs = options.timeoutMs ?? DEFAULT_GENERATE_TIMEOUT_MS;
   const template = options.template ?? getBuiltinTemplate('builtin:general');
   const outputFormat: OutputFormat = template.outputFormat;
+  const onToken = options.onToken;
+  const useStream = typeof onToken === 'function';
 
   if (!apiKey.trim()) {
     throw new VisionApiError('尚未填写 API Key，请先打开设置页完成配置');
@@ -148,6 +251,9 @@ export async function generateImagePrompt(
       model: model.trim(),
       max_tokens: MAX_OUTPUT_TOKENS,
       temperature: 0.7,
+      // 防复读：长输出时抑制"同一短语反复出现"式退化（实测有效）
+      frequency_penalty: FREQUENCY_PENALTY,
+      presence_penalty: PRESENCE_PENALTY,
       messages: [
         { role: 'system', content: buildTemplateSystemPrompt(template, lang) },
         {
@@ -159,6 +265,9 @@ export async function generateImagePrompt(
         },
       ],
     };
+    if (useStream) {
+      body.stream = true;
+    }
     if (outputFormat === 'json') {
       body.response_format = { type: 'json_object' };
     }
@@ -177,8 +286,18 @@ export async function generateImagePrompt(
       throw new VisionApiError(friendlyHttpError(response.status), response.status);
     }
 
-    const data = await parseJsonResponse(response);
-    const text = data.choices?.[0]?.message?.content?.trim();
+    let text: string;
+    if (useStream && isSseResponse(response)) {
+      // 流式：边收边通过 onToken 推送累计全文，首 token 通常 2 秒内到达
+      text = (await readSseStream(response, onToken)).trim();
+    } else {
+      const data = await parseJsonResponse(response);
+      text = data.choices?.[0]?.message?.content?.trim() ?? '';
+      if (useStream && text) {
+        // 服务端忽略了 stream 参数：一次性回调，保证调用方语义一致
+        onToken(text);
+      }
+    }
     if (!text) {
       throw new VisionApiError('模型返回内容为空，请重试');
     }

@@ -39,7 +39,10 @@ function baseRequirements(): string[] {
     '  6) materials and textures: surface finish, fabric, grain, fine tactile detail;',
     '  7) art style and medium: photographic / painted / digital cues, era and genre signals;',
     '  8) mood and atmosphere: emotional tone and the story the image hints at;',
-    '  9) at least five concrete visual details a viewer would notice on a second look.',
+    '  9) at least eight concrete visual details a viewer would notice on a second look.',
+    '- Detail density: maximize useful detail — every clause should add a new observable',
+    '  fact about the image. Vague filler ("beautiful", "nice", "amazing") is forbidden;',
+    '  replace it with the specific visual evidence.',
     '- Style: comma-separated descriptive tags blended with two or three',
     '  natural-language sentences. No markdown, no quotation marks, no preamble,',
     '  no explanations, no meta-commentary.',
@@ -56,7 +59,10 @@ function detailFooter(): string[] {
   return [
     '- Go deep on specifics: name exact colors, textures, light directions and',
     '  spatial relations instead of generic adjectives.',
-    '- Include at least five concrete visual details a viewer would notice on a second look.',
+    '- Include at least eight concrete visual details a viewer would notice on a second look.',
+    '- Detail density: maximize useful detail — every clause should add a new observable',
+    '  fact about the image. Vague filler ("beautiful", "nice", "amazing") is forbidden;',
+    '  replace it with the specific visual evidence.',
     '- Style: comma-separated descriptive tags blended with two or three',
     '  natural-language sentences. No markdown, no quotation marks, no preamble,',
     '  no explanations, no meta-commentary.',
@@ -219,7 +225,7 @@ export const BUILTIN_TEMPLATES: PromptTemplate[] = [
       '  composition (framing, foreground / midground / background, balance),',
       '  camera perspective, lighting (direction, quality, color temperature),',
       '  color palette, materials and textures, art style and medium,',
-      '  mood and atmosphere, plus at least five concrete visual details.',
+      '  mood and atmosphere, plus at least eight concrete visual details.',
       '- Prefer completeness over brevity in every field.',
       '- The "tags" field holds comma-style descriptive tags.',
       '- Length of "prompt": about {lengthHint}.',
@@ -252,7 +258,7 @@ function outputLanguageName(lang: PromptLanguage): string {
 
 /** 输出长度提示（拼入 system prompt） */
 function lengthHint(lang: PromptLanguage): string {
-  return lang === 'zh' ? '150-350 个汉字' : '120-250 English words';
+  return lang === 'zh' ? '300-600 个汉字' : '250-450 English words';
 }
 
 /**
