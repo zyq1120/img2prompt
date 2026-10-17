@@ -37,5 +37,5 @@
   "name": "__MSG_appName__",
   "options_page": "options/options.html",
   "permissions": ["contextMenus", "storage", "scripting", "activeTab"],
-  "version": "3.2.1"
+  "version": "3.3.0"
 }
