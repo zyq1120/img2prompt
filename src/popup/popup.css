@@ -1,4 +1,4 @@
-/* Popup：参考有道翻译官 —— 浅蓝 tint + 大圆角 + 亮蓝主色 */
+/* Popup：液态玻璃 —— 柔光蓝调背景 + 半透明玻璃卡 + 大圆角 + 品牌蓝 */
 * {
   box-sizing: border-box;
 }
@@ -12,30 +12,37 @@ body {
     'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', system-ui, sans-serif;
   font-size: 13px;
   line-height: 1.5;
-  color: #1a1a1a;
-  background: #f4f7fb;
+  color: #1d1d1f;
+  background:
+    radial-gradient(320px 200px at 88% -40px, rgba(126, 182, 242, 0.5), transparent 70%),
+    radial-gradient(300px 220px at -60px 108%, rgba(169, 214, 245, 0.55), transparent 70%),
+    linear-gradient(165deg, #d9ecfd 0%, #eef6fd 55%, #f7fbfe 100%);
   display: flex;
   flex-direction: column;
   -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
 }
 
 .popup-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 12px 16px;
+  padding: 14px 16px 12px;
   position: sticky;
   top: 0;
   z-index: 1;
-  background: #f4f7fb;
-  border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+  background: rgba(255, 255, 255, 0.35);
+  -webkit-backdrop-filter: blur(18px) saturate(180%);
+  backdrop-filter: blur(18px) saturate(180%);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.5);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.6);
 }
 
 .popup-header h1 {
   margin: 0;
   font-size: 17px;
   font-weight: 700;
-  letter-spacing: 0;
+  letter-spacing: -0.01em;
 }
 
 .header-actions {
@@ -47,21 +54,21 @@ body {
 button.ghost {
   border: 0;
   background: transparent;
-  border-radius: 10px;
+  border-radius: 999px;
   font-family: inherit;
   font-size: 14px;
-  font-weight: 400;
+  font-weight: 500;
   padding: 6px 10px;
   cursor: pointer;
-  color: #1f9dff;
+  color: #007aff;
 }
 
 button.ghost:hover {
-  background: rgba(31, 157, 255, 0.08);
+  background: rgba(0, 122, 255, 0.08);
 }
 
 button.ghost:active {
-  background: rgba(31, 157, 255, 0.14);
+  background: rgba(0, 122, 255, 0.14);
 }
 
 button.ghost[hidden] {
@@ -72,7 +79,7 @@ button.ghost[hidden] {
 .provider-bar {
   display: flex;
   gap: 8px;
-  padding: 10px 16px 0;
+  padding: 12px 16px 0;
 }
 
 .pill-select {
@@ -81,28 +88,32 @@ button.ghost[hidden] {
   font-family: inherit;
   font-size: 13px;
   color: #3c3c43;
-  background: #fff;
-  border: 0;
-  border-radius: 12px;
-  padding: 9px 10px;
+  background: rgba(255, 255, 255, 0.55);
+  border: 1px solid rgba(255, 255, 255, 0.6);
+  border-radius: 999px;
+  padding: 9px 12px;
   cursor: pointer;
-  box-shadow: 0 1px 4px rgba(31, 157, 255, 0.08);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.65),
+    0 4px 14px rgba(31, 56, 88, 0.08);
   text-overflow: ellipsis;
 }
 
 .pill-select:focus-visible {
-  outline: 2px solid #1f9dff;
+  outline: 2px solid #007aff;
   outline-offset: -2px;
 }
 
-/* 拖拽上传区：浅蓝 tint */
+/* 拖拽上传区：玻璃虚线框 */
 .dropzone {
-  margin: 10px 16px 0;
-  border: 1.5px dashed rgba(31, 157, 255, 0.45);
-  border-radius: 16px;
-  background: #e9f4fe;
-  color: #1f9dff;
+  margin: 12px 16px 0;
+  border: 1.5px dashed rgba(0, 122, 255, 0.4);
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.32);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.5);
+  color: #007aff;
   font-size: 13px;
+  font-weight: 500;
   padding: 16px;
   display: flex;
   align-items: center;
@@ -112,12 +123,12 @@ button.ghost[hidden] {
 }
 
 .dropzone:hover {
-  background: #dcedfd;
+  background: rgba(255, 255, 255, 0.5);
 }
 
 .dropzone.dragover {
-  background: #dcedfd;
-  border-color: #1f9dff;
+  background: rgba(255, 255, 255, 0.55);
+  border-color: #007aff;
 }
 
 .dropzone-icon {
@@ -128,10 +139,13 @@ button.ghost[hidden] {
 
 /* 上传结果区 */
 .upload-result {
-  margin: 10px 16px 0;
-  background: #eef6ff;
-  border: 0;
-  border-radius: 16px;
+  margin: 12px 16px 0;
+  background: rgba(255, 255, 255, 0.55);
+  border: 1px solid rgba(255, 255, 255, 0.6);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.65),
+    0 6px 18px rgba(31, 56, 88, 0.08);
+  border-radius: 18px;
   padding: 12px;
   display: flex;
   gap: 10px;
@@ -147,9 +161,9 @@ button.ghost[hidden] {
   width: 56px;
   height: 56px;
   object-fit: cover;
-  border-radius: 10px;
+  border-radius: 12px;
   flex: none;
-  background: #dcedfd;
+  background: rgba(255, 255, 255, 0.5);
 }
 
 .upload-body {
@@ -160,8 +174,8 @@ button.ghost[hidden] {
 .upload-text {
   margin: 0 0 8px;
   font-size: 13px;
-  line-height: 1.55;
-  color: #1c1c1e;
+  line-height: 1.6;
+  color: #1d1d1f;
   display: -webkit-box;
   -webkit-line-clamp: 4;
   -webkit-box-orient: vertical;
@@ -178,29 +192,34 @@ button.ghost[hidden] {
 }
 
 .mini-btn {
-  border: 1px solid rgba(0, 0, 0, 0.12);
-  border-radius: 6px;
+  border: 1px solid rgba(255, 255, 255, 0.6);
+  border-radius: 999px;
   font-family: inherit;
   font-size: 12px;
   font-weight: 600;
   padding: 6px 14px;
   cursor: pointer;
-  background: #fff;
+  background: rgba(255, 255, 255, 0.6);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.65);
   color: #007aff;
 }
 
 .mini-btn:hover {
-  background: rgba(0, 0, 0, 0.03);
+  background: rgba(255, 255, 255, 0.85);
 }
 
 .mini-btn.primary {
-  background: linear-gradient(180deg, #3fb9ff, #1e9bf0);
-  border-color: transparent;
+  background: linear-gradient(180deg, #2b93ff, #007aff);
+  border-color: rgba(255, 255, 255, 0.35);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.45),
+    0 4px 12px rgba(0, 122, 255, 0.3);
   color: #fff;
 }
 
 .mini-btn.primary:hover {
-  filter: brightness(1.05);
+  filter: brightness(1.06);
+  background: linear-gradient(180deg, #2b93ff, #007aff);
 }
 
 .mini-btn[hidden] {
@@ -233,7 +252,7 @@ button.ghost[hidden] {
 .search-bar {
   display: flex;
   gap: 8px;
-  padding: 10px 16px 0;
+  padding: 12px 16px 0;
   align-items: center;
 }
 
@@ -242,11 +261,12 @@ button.ghost[hidden] {
   min-width: 0;
   font-family: inherit;
   font-size: 13px;
-  border: 1px solid rgba(0, 0, 0, 0.12);
-  border-radius: 8px;
-  background: #fff;
-  padding: 8px 12px;
-  color: #1c1c1e;
+  border: 1px solid rgba(255, 255, 255, 0.6);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.45);
+  box-shadow: inset 0 1.5px 4px rgba(31, 56, 88, 0.06);
+  padding: 8px 14px;
+  color: #1d1d1f;
 }
 
 .search-input:focus {
@@ -258,9 +278,10 @@ button.ghost[hidden] {
   flex: none;
   width: 34px;
   height: 34px;
-  border: 1px solid rgba(0, 0, 0, 0.12);
-  border-radius: 8px;
-  background: #fff;
+  border: 1px solid rgba(255, 255, 255, 0.6);
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.55);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.65);
   font-size: 16px;
   color: #8e8e93;
   cursor: pointer;
@@ -320,7 +341,7 @@ button.ghost[hidden] {
 }
 
 .empty-search {
-  color: #6e6e73;
+  color: rgba(60, 60, 67, 0.6);
 }
 
 .history-list {
@@ -336,10 +357,12 @@ button.ghost[hidden] {
   gap: 12px;
   align-items: flex-start;
   text-align: left;
-  border: 0;
-  border-radius: 16px;
-  background: #fff;
-  box-shadow: 0 1px 4px rgba(31, 157, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.6);
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.55);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.65),
+    0 6px 18px rgba(31, 56, 88, 0.07);
   padding: 12px;
   cursor: pointer;
   position: relative;
@@ -348,20 +371,21 @@ button.ghost[hidden] {
 }
 
 .history-item:hover {
-  background: #fbfdff;
+  background: rgba(255, 255, 255, 0.75);
 }
 
 .history-item:active {
-  background: #f2f8ff;
+  background: rgba(255, 255, 255, 0.85);
 }
 
 .thumb {
   width: 56px;
   height: 56px;
   object-fit: cover;
-  border-radius: 6px;
+  border-radius: 12px;
   flex: none;
-  background: #e5e5ea;
+  background: rgba(255, 255, 255, 0.5);
+  box-shadow: 0 2px 8px rgba(31, 56, 88, 0.12);
 }
 
 .item-body {
@@ -372,8 +396,8 @@ button.ghost[hidden] {
 .snippet {
   margin: 0 0 6px;
   font-size: 13px;
-  line-height: 1.55;
-  color: #1c1c1e;
+  line-height: 1.6;
+  color: #1d1d1f;
   display: -webkit-box;
   -webkit-line-clamp: 3;
   -webkit-box-orient: vertical;
@@ -385,12 +409,15 @@ button.ghost[hidden] {
   align-items: center;
   gap: 8px;
   font-size: 12px;
-  color: #8e8e93;
+  color: rgba(60, 60, 67, 0.55);
+  font-variant-numeric: tabular-nums;
 }
 
 .lang-badge {
-  background: #e9f4fe;
-  color: #1f9dff;
+  flex: none;
+  white-space: nowrap;
+  background: rgba(0, 122, 255, 0.1);
+  color: #007aff;
   border-radius: 999px;
   padding: 2px 8px;
   font-size: 11px;
@@ -401,18 +428,18 @@ button.ghost[hidden] {
   position: absolute;
   right: 10px;
   top: 10px;
-  background: #1c1c1e;
+  background: rgba(28, 28, 30, 0.85);
   color: #fff;
   font-size: 11px;
   font-weight: 600;
-  border-radius: 6px;
+  border-radius: 999px;
   padding: 3px 9px;
 }
 
 .empty {
   padding: 48px 32px;
   text-align: center;
-  color: #6e6e73;
+  color: rgba(60, 60, 67, 0.6);
   font-size: 13px;
   line-height: 1.7;
   margin: 0;
@@ -424,35 +451,41 @@ button.ghost[hidden] {
 
 .setup-cta {
   margin-top: 16px;
-  background: linear-gradient(180deg, #3fb9ff, #1e9bf0);
+  background: linear-gradient(180deg, #2b93ff, #007aff);
   color: #fff;
-  border: 0;
-  border-radius: 14px;
+  border: 1px solid rgba(255, 255, 255, 0.35);
+  border-radius: 999px;
   padding: 11px 24px;
   font-size: 15px;
-  font-weight: 700;
+  font-weight: 600;
   cursor: pointer;
-  box-shadow: 0 4px 12px rgba(31, 157, 255, 0.3);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.45),
+    0 6px 18px rgba(0, 122, 255, 0.32);
 }
 
 .setup-cta:hover {
-  filter: brightness(1.05);
+  filter: brightness(1.06);
 }
 
 .setup-cta[hidden] {
   display: none;
 }
 
-/* 深色模式 */
+/* 深色模式：深色玻璃 */
 @media (prefers-color-scheme: dark) {
   body {
-    color: #f2f2f7;
-    background: #000;
+    color: #f5f5f7;
+    background:
+      radial-gradient(320px 200px at 88% -40px, rgba(10, 132, 255, 0.28), transparent 70%),
+      radial-gradient(300px 220px at -60px 108%, rgba(0, 122, 255, 0.18), transparent 70%),
+      linear-gradient(165deg, #10151c 0%, #0a0e13 60%, #05070a 100%);
   }
 
   .popup-header {
-    background: #000;
-    border-bottom-color: rgba(255, 255, 255, 0.1);
+    background: rgba(20, 24, 30, 0.55);
+    border-bottom-color: rgba(255, 255, 255, 0.14);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.12);
   }
 
   button.ghost {
@@ -467,46 +500,11 @@ button.ghost[hidden] {
     background: rgba(255, 255, 255, 0.12);
   }
 
-  .setup-cta {
-    background: linear-gradient(180deg, #3fa9f5, #1e8fe0);
-  }
-
-  .history-item {
-    background: #1c1c1e;
-    border: 0;
-    box-shadow: none;
-  }
-
-  .history-item:hover {
-    background: #222224;
-  }
-
-  .history-item:active {
-    background: rgba(255, 255, 255, 0.04);
-  }
-
-  .thumb {
-    background: #2c2c2e;
-  }
-
-  .snippet {
-    color: #f2f2f7;
-  }
-
-  .lang-badge {
-    background: rgba(31, 157, 255, 0.16);
-    color: #4fb3ff;
-  }
-
-  .copied-tip {
-    background: #f2f2f7;
-    color: #1c1c1e;
-  }
-
   .pill-select {
-    background: #1c1c1e;
-    border-color: rgba(255, 255, 255, 0.14);
+    background: rgba(255, 255, 255, 0.1);
+    border-color: rgba(255, 255, 255, 0.16);
     color: #ebebf5;
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.14);
   }
 
   .pill-select option {
@@ -514,32 +512,34 @@ button.ghost[hidden] {
   }
 
   .dropzone {
-    border-color: rgba(79, 179, 255, 0.35);
-    background: rgba(31, 157, 255, 0.08);
+    border-color: rgba(79, 179, 255, 0.4);
+    background: rgba(255, 255, 255, 0.06);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.12);
     color: #4fb3ff;
   }
 
-  .dropzone:hover,
+  .dropzone:hover {
+    background: rgba(255, 255, 255, 0.1);
+  }
+
   .dropzone.dragover {
+    background: rgba(255, 255, 255, 0.12);
     border-color: #4fb3ff;
     color: #4fb3ff;
   }
 
-  .dropzone.dragover {
-    background: rgba(31, 157, 255, 0.14);
-  }
-
   .upload-result {
-    background: rgba(31, 157, 255, 0.08);
-    border: 0;
+    background: rgba(255, 255, 255, 0.08);
+    border-color: rgba(255, 255, 255, 0.14);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.12);
   }
 
   .upload-thumb {
-    background: #2c2c2e;
+    background: rgba(255, 255, 255, 0.1);
   }
 
   .upload-text {
-    color: #f2f2f7;
+    color: #f5f5f7;
   }
 
   .upload-text.is-error {
@@ -547,19 +547,24 @@ button.ghost[hidden] {
   }
 
   .mini-btn {
-    background: #1c1c1e;
+    background: rgba(255, 255, 255, 0.1);
     border-color: rgba(255, 255, 255, 0.16);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.14);
     color: #4fb3ff;
   }
 
   .mini-btn:hover {
-    background: rgba(255, 255, 255, 0.05);
+    background: rgba(255, 255, 255, 0.16);
   }
 
   .mini-btn.primary {
-    background: linear-gradient(180deg, #3fa9f5, #1e8fe0);
-    border-color: transparent;
+    background: linear-gradient(180deg, #2b93ff, #0a84ff);
+    border-color: rgba(255, 255, 255, 0.3);
     color: #fff;
+  }
+
+  .mini-btn.primary:hover {
+    background: linear-gradient(180deg, #2b93ff, #0a84ff);
   }
 
   .mini-spinner {
@@ -568,18 +573,56 @@ button.ghost[hidden] {
   }
 
   .search-input {
-    background: #1c1c1e;
+    background: rgba(255, 255, 255, 0.08);
     border-color: rgba(255, 255, 255, 0.14);
+    box-shadow: inset 0 1.5px 4px rgba(0, 0, 0, 0.25);
     color: #fff;
   }
 
   .fav-filter {
-    background: #1c1c1e;
-    border-color: rgba(255, 255, 255, 0.14);
+    background: rgba(255, 255, 255, 0.1);
+    border-color: rgba(255, 255, 255, 0.16);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.14);
   }
 
   .fav-filter:hover {
     color: #ebebf5;
+  }
+
+  .history-item {
+    background: rgba(255, 255, 255, 0.08);
+    border-color: rgba(255, 255, 255, 0.14);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.12);
+  }
+
+  .history-item:hover {
+    background: rgba(255, 255, 255, 0.13);
+  }
+
+  .history-item:active {
+    background: rgba(255, 255, 255, 0.16);
+  }
+
+  .thumb {
+    background: rgba(255, 255, 255, 0.1);
+  }
+
+  .snippet {
+    color: #f5f5f7;
+  }
+
+  .meta {
+    color: rgba(235, 235, 245, 0.5);
+  }
+
+  .lang-badge {
+    background: rgba(10, 132, 255, 0.2);
+    color: #4fb3ff;
+  }
+
+  .copied-tip {
+    background: rgba(245, 245, 247, 0.92);
+    color: #1d1d1f;
   }
 
   .fav-btn {
@@ -603,12 +646,16 @@ button.ghost[hidden] {
     outline-color: #0a84ff;
   }
 
+  .setup-cta {
+    background: linear-gradient(180deg, #2b93ff, #0a84ff);
+  }
+
   .empty {
-    color: #98989f;
+    color: rgba(235, 235, 245, 0.55);
   }
 
   .empty-search {
-    color: #98989f;
+    color: rgba(235, 235, 245, 0.55);
   }
 }
 
