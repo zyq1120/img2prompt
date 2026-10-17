@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   VisionApiError,
   fetchImageAsDataUrl,
+  fetchModelList,
   generateImagePrompt,
   isInsecureBaseUrl,
   joinUrl,
@@ -373,6 +374,61 @@ describe('testConnection', () => {
 
   it('缺 Key 时直接抛错不发请求', async () => {
     await expect(testConnection({ apiKey: '', baseUrl: 'https://x' })).rejects.toThrow(
+      VisionApiError
+    );
+    expect(vi.mocked(fetch)).not.toHaveBeenCalled();
+  });
+});
+
+describe('fetchModelList', () => {
+  it('解析 data[].id 并去重排序', async () => {
+    vi.mocked(fetch).mockResolvedValueOnce(
+      jsonResponse({
+        data: [
+          { id: 'meta/llama-3.2-11b-vision-instruct' },
+          { id: 'gpt-4o' },
+          { id: 'gpt-4o' },
+          { id: '  google/gemma-3-27b-it  ' },
+        ],
+      })
+    );
+    await expect(
+      fetchModelList({ apiKey: 'sk-test', baseUrl: 'https://api.openai.com/v1' })
+    ).resolves.toEqual(['google/gemma-3-27b-it', 'gpt-4o', 'meta/llama-3.2-11b-vision-instruct']);
+  });
+
+  it('过滤掉无 id 或 id 非字符串的条目', async () => {
+    vi.mocked(fetch).mockResolvedValueOnce(
+      jsonResponse({ data: [{ id: 'a-model' }, { name: 'no-id' }, { id: 42 }, null, { id: ' ' }] })
+    );
+    await expect(
+      fetchModelList({ apiKey: 'sk-test', baseUrl: 'https://api.openai.com/v1' })
+    ).resolves.toEqual(['a-model']);
+  });
+
+  it('列表为空时抛错', async () => {
+    vi.mocked(fetch).mockResolvedValueOnce(jsonResponse({ data: [] }));
+    await expect(
+      fetchModelList({ apiKey: 'sk-test', baseUrl: 'https://api.openai.com/v1' })
+    ).rejects.toThrow(VisionApiError);
+  });
+
+  it('响应体不是预期结构时抛错', async () => {
+    vi.mocked(fetch).mockResolvedValueOnce(jsonResponse({ models: ['x'] }));
+    await expect(
+      fetchModelList({ apiKey: 'sk-test', baseUrl: 'https://api.openai.com/v1' })
+    ).rejects.toThrow(VisionApiError);
+  });
+
+  it('HTTP 403 时抛出带状态码的友好错误', async () => {
+    vi.mocked(fetch).mockResolvedValueOnce(jsonResponse({}, 403));
+    await expect(
+      fetchModelList({ apiKey: 'sk-test', baseUrl: 'https://api.openai.com/v1' })
+    ).rejects.toThrow(/403/);
+  });
+
+  it('缺 Key 时直接抛错不发请求', async () => {
+    await expect(fetchModelList({ apiKey: '', baseUrl: 'https://x' })).rejects.toThrow(
       VisionApiError
     );
     expect(vi.mocked(fetch)).not.toHaveBeenCalled();

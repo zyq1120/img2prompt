@@ -2,7 +2,7 @@
  * 设置页逻辑：多服务商管理、提示词模板管理、通用设置。
  * API Key 仅写入 chrome.storage.local，不做任何网络上报。
  */
-import { VisionApiError, isInsecureBaseUrl, testConnection } from '../lib/api.js';
+import { VisionApiError, fetchModelList, isInsecureBaseUrl, testConnection } from '../lib/api.js';
 import { applyI18n, t } from '../lib/i18n.js';
 import {
   addProvider,
@@ -36,6 +36,9 @@ const providerNameInput = document.getElementById('providerName') as HTMLInputEl
 const providerKeyInput = document.getElementById('providerKey') as HTMLInputElement;
 const providerBaseUrlInput = document.getElementById('providerBaseUrl') as HTMLInputElement;
 const providerModelInput = document.getElementById('providerModel') as HTMLInputElement;
+const fetchModelsBtn = document.getElementById('fetchModelsBtn') as HTMLButtonElement;
+const providerModelSelect = document.getElementById('providerModelSelect') as HTMLSelectElement;
+const modelFetchStatus = document.getElementById('modelFetchStatus') as HTMLSpanElement;
 const saveProviderBtn = document.getElementById('saveProviderBtn') as HTMLButtonElement;
 const cancelProviderBtn = document.getElementById('cancelProviderBtn') as HTMLButtonElement;
 const testDraftBtn = document.getElementById('testDraftBtn') as HTMLButtonElement;
@@ -111,6 +114,7 @@ addProviderBtn.addEventListener('click', () => {
   resetKeyVisibility();
   providerBaseUrlInput.value = 'https://api.openai.com/v1';
   providerModelInput.value = 'gpt-4o';
+  resetModelPicker();
   providerEditor.hidden = false;
   providerNameInput.focus();
 });
@@ -118,6 +122,56 @@ addProviderBtn.addEventListener('click', () => {
 cancelProviderBtn.addEventListener('click', () => {
   providerEditor.hidden = true;
   editingProviderId = null;
+});
+
+/** 重置模型选择器（切换编辑对象时清掉上一个服务商拉到的列表） */
+function resetModelPicker(): void {
+  providerModelSelect.innerHTML = '';
+  providerModelSelect.hidden = true;
+  modelFetchStatus.textContent = '';
+}
+
+/** 用表单里的 Key 与 Base URL 拉取全部模型，填充下拉供直接选择 */
+fetchModelsBtn.addEventListener('click', async () => {
+  fetchModelsBtn.disabled = true;
+  const originalText = fetchModelsBtn.textContent;
+  fetchModelsBtn.textContent = t('optionsFetchingModels');
+  modelFetchStatus.textContent = '';
+  try {
+    const models = await fetchModelList({
+      apiKey: cleanApiKey(providerKeyInput.value),
+      baseUrl: providerBaseUrlInput.value.trim(),
+    });
+    providerModelSelect.innerHTML = '';
+    const placeholder = document.createElement('option');
+    placeholder.value = '';
+    placeholder.textContent = t('optionsSelectModel');
+    providerModelSelect.appendChild(placeholder);
+    for (const id of models) {
+      const option = document.createElement('option');
+      option.value = id;
+      option.textContent = id;
+      providerModelSelect.appendChild(option);
+    }
+    // 输入框里已有的模型若在列表中，直接预选
+    const current = providerModelInput.value.trim();
+    providerModelSelect.value = models.includes(current) ? current : '';
+    providerModelSelect.hidden = false;
+    modelFetchStatus.textContent = t('optionsModelCount', String(models.length));
+  } catch (error) {
+    resetModelPicker();
+    showStatus(error instanceof VisionApiError ? error.message : String(error), false);
+  } finally {
+    fetchModelsBtn.disabled = false;
+    fetchModelsBtn.textContent = originalText;
+  }
+});
+
+/** 在下拉里选中模型即填入模型输入框，后续仍走原保存流程 */
+providerModelSelect.addEventListener('change', () => {
+  if (providerModelSelect.value) {
+    providerModelInput.value = providerModelSelect.value;
+  }
 });
 
 /** 编辑器内测试：用表单里的值直接测，不用先保存 */
@@ -290,6 +344,7 @@ function createProviderRow(provider: ProviderConfig, settings: PluginSettings): 
     resetKeyVisibility();
     providerBaseUrlInput.value = provider.baseUrl;
     providerModelInput.value = provider.model;
+    resetModelPicker();
     providerEditor.hidden = false;
     providerEditor.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
   });

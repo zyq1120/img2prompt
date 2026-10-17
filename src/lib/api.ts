@@ -425,6 +425,66 @@ export async function testConnection(options: ConnectionTestOptions): Promise<tr
 }
 
 /**
+ * 获取服务商的全部可用模型：调用 OpenAI 兼容的 `GET /models`。
+ * 返回去重并排序后的模型 ID 列表，供设置页下拉选择。
+ *
+ * @throws {VisionApiError} 入参缺失、HTTP 错误、超时、网络失败、
+ *   响应不可解析或列表为空时抛出
+ */
+export async function fetchModelList(options: ConnectionTestOptions): Promise<string[]> {
+  const { apiKey, baseUrl } = options;
+  const timeoutMs = options.timeoutMs ?? DEFAULT_TIMEOUT_MS;
+
+  if (!apiKey.trim() || !baseUrl.trim()) {
+    throw new VisionApiError(t('apiKeyRequiredForTest'));
+  }
+
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
+
+  try {
+    const response = await fetch(joinUrl(baseUrl, '/models'), {
+      headers: { Authorization: `Bearer ${apiKey.trim()}` },
+      signal: controller.signal,
+    });
+    if (!response.ok) {
+      throw new VisionApiError(friendlyHttpError(response.status), response.status);
+    }
+    let body: unknown;
+    try {
+      body = await response.json();
+    } catch {
+      throw new VisionApiError(t('apiResponseUnparseable'));
+    }
+    const data = (body as { data?: unknown })?.data;
+    const ids = Array.isArray(data)
+      ? data
+          .map((entry) =>
+            entry && typeof entry === 'object' && typeof (entry as { id?: unknown }).id === 'string'
+              ? (entry as { id: string }).id.trim()
+              : ''
+          )
+          .filter(Boolean)
+      : [];
+    const models = [...new Set(ids)].sort((a, b) => a.localeCompare(b));
+    if (models.length === 0) {
+      throw new VisionApiError(t('apiModelListEmpty'));
+    }
+    return models;
+  } catch (error) {
+    if (error instanceof VisionApiError) {
+      throw error;
+    }
+    if (error instanceof DOMException && error.name === 'AbortError') {
+      throw new VisionApiError('请求超时：请检查 Base URL 是否可达');
+    }
+    throw new VisionApiError('网络请求失败：请检查 Base URL 与网络连接');
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+/**
  * 下载图片并压缩为 JPEG dataURL（等比缩放，长边不超过 maxEdgePx）。
  * 在 MV3 service worker 中可用：fetch + createImageBitmap + OffscreenCanvas。
  *

@@ -66,6 +66,13 @@
           <span data-i18n="optionsModel">模型</span>
           <input id="providerModel" type="text" autocomplete="off" spellcheck="false" />
         </label>
+        <div class="model-picker">
+          <button id="fetchModelsBtn" type="button" data-i18n="optionsFetchModels">
+            获取模型列表
+          </button>
+          <select id="providerModelSelect" hidden></select>
+          <span id="modelFetchStatus" class="hint"></span>
+        </div>
         <div class="editor-actions">
           <button id="saveProviderBtn" class="primary" data-i18n="optionsSave">保存</button>
           <button id="testDraftBtn" type="button" data-i18n="optionsTest">测试连接</button>

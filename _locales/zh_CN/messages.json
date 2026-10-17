@@ -35,6 +35,21 @@
   "optionsModel": {
     "message": "模型"
   },
+  "optionsFetchModels": {
+    "message": "获取模型列表"
+  },
+  "optionsFetchingModels": {
+    "message": "正在获取…"
+  },
+  "optionsSelectModel": {
+    "message": "从列表中选择模型"
+  },
+  "optionsModelCount": {
+    "message": "共 $1 个模型"
+  },
+  "apiModelListEmpty": {
+    "message": "接口没有返回任何模型，请检查 Base URL 是否指向兼容接口"
+  },
   "optionsPageTitle": {
     "message": "Img2Prompt 设置"
   },

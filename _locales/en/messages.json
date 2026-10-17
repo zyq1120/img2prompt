@@ -35,6 +35,21 @@
   "optionsModel": {
     "message": "Model"
   },
+  "optionsFetchModels": {
+    "message": "Fetch model list"
+  },
+  "optionsFetchingModels": {
+    "message": "Fetching…"
+  },
+  "optionsSelectModel": {
+    "message": "Select a model from the list"
+  },
+  "optionsModelCount": {
+    "message": "$1 models available"
+  },
+  "apiModelListEmpty": {
+    "message": "The endpoint returned no models. Check that the Base URL points to a compatible API."
+  },
   "optionsPageTitle": {
     "message": "Img2Prompt Settings"
   },
