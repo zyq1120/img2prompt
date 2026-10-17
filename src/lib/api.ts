@@ -27,8 +27,13 @@ export const MAX_IMAGE_EDGE_PX = 1568;
 const THUMBNAIL_EDGE_PX = 160;
 /** 压缩为 JPEG 时的质量 */
 const JPEG_QUALITY = 0.85;
-/** 模型最大输出 token 数（详细提示词需要更大的输出预算） */
-const MAX_OUTPUT_TOKENS = 2000;
+/** 模型最大输出 token 数（详细提示词 + 思考型模型的推理都需要预算） */
+const MAX_OUTPUT_TOKENS = 4096;
+/**
+ * 正文为空且 finish_reason=length 时的重试预算：思考型模型把额度耗在
+ * 推理上会截断正文，双倍额度自动重试一次。
+ */
+const RETRY_MAX_OUTPUT_TOKENS = 8192;
 /**
  * 防复读惩罚参数：实测可消除部分视觉模型（如 llama-3.2-vision）在长输出时
  * 陷入的重复 loop（"夜市的灯光，城市的灯光……"式复读），同时不损伤正常输出质量。
@@ -130,11 +135,19 @@ export function joinUrl(baseUrl: string, path: string): string {
  * 导出以便单测：网关返回 HTML/纯文本时不再误报"网络错误"，
  * 而是明确提示检查 Base URL / 兼容接口。
  */
-export async function parseJsonResponse(
-  response: Response
-): Promise<{ choices?: Array<{ message?: { content?: string } }> }> {
+export async function parseJsonResponse(response: Response): Promise<{
+  choices?: Array<{
+    message?: { content?: unknown; reasoning_content?: string };
+    finish_reason?: string | null;
+  }>;
+}> {
   try {
-    return (await response.json()) as { choices?: Array<{ message?: { content?: string } }> };
+    return (await response.json()) as {
+      choices?: Array<{
+        message?: { content?: unknown; reasoning_content?: string };
+        finish_reason?: string | null;
+      }>;
+    };
   } catch {
     throw new VisionApiError(t('apiResponseUnparseable'));
   }
@@ -151,11 +164,20 @@ function isSseResponse(response: Response): boolean {
   return contentType.includes('text/event-stream');
 }
 
+/** 单个 SSE 事件块解析出的增量 */
+interface SseDelta {
+  content: string;
+  reasoning: string;
+  finishReason: string | null;
+}
+
 /**
  * 从单个 SSE 事件块中提取文本增量。
  * 返回 null 表示该事件无有效增量（`[DONE]`、心跳注释、空事件）。
+ * 思考型模型会把推理过程放在 `reasoning_content` 里单独下发，这里分开提取，
+ * 避免推理文本混进正文；`finish_reason` 只出现在最后一个块。
  */
-function extractSseDelta(eventBlock: string): string | null {
+function extractSseDelta(eventBlock: string): SseDelta | null {
   let data = '';
   for (const line of eventBlock.split('\n')) {
     const trimmed = line.trim();
@@ -169,36 +191,64 @@ function extractSseDelta(eventBlock: string): string | null {
   }
   try {
     const parsed = JSON.parse(data) as {
-      choices?: Array<{ delta?: { content?: string } }>;
+      choices?: Array<{
+        delta?: { content?: string; reasoning_content?: string };
+        finish_reason?: string | null;
+      }>;
     };
-    return parsed.choices?.[0]?.delta?.content ?? '';
+    const choice = parsed.choices?.[0];
+    return {
+      content: choice?.delta?.content ?? '',
+      reasoning: choice?.delta?.reasoning_content ?? '',
+      finishReason: choice?.finish_reason ?? null,
+    };
   } catch {
     // 某块损坏不致命中断整个流，跳过即可
-    return '';
+    return { content: '', reasoning: '', finishReason: null };
   }
+}
+
+/** readSseStream 的可选回调：接收思考累计全文与结束原因 */
+export interface SseStreamHooks {
+  onReasoning?: (partialReasoning: string) => void;
+  onFinishReason?: (reason: string) => void;
 }
 
 /**
  * 读取 OpenAI 兼容的 SSE 流，拼接 `delta.content` 并在每次收到增量时
- * 以累计全文调用 `onToken`。
+ * 以累计全文调用 `onToken`。思考增量（`reasoning_content`）单独累计、
+ * 仅通过 hooks 透出，不混入正文返回值。
  *
- * @returns 累计的完整文本
+ * @returns 累计的完整正文
  */
 export async function readSseStream(
   response: Response,
-  onToken: (partialText: string) => void
+  onToken: (partialText: string) => void,
+  hooks: SseStreamHooks = {}
 ): Promise<string> {
   const reader = response.body!.getReader();
   const decoder = new TextDecoder();
   let buffer = '';
   let fullText = '';
+  let fullReasoning = '';
   const pumpBlock = (block: string): void => {
     const delta = extractSseDelta(block);
     if (!delta) {
-      // null（DONE/心跳）或空增量：不推送，避免无意义的重复回调
+      // null（DONE/心跳）：不推送，避免无意义的重复回调
       return;
     }
-    fullText += delta;
+    if (delta.finishReason) {
+      hooks.onFinishReason?.(delta.finishReason);
+    }
+    if (delta.reasoning) {
+      fullReasoning += delta.reasoning;
+      hooks.onReasoning?.(fullReasoning);
+    }
+    if (!delta.content) {
+      // 纯思考增量：不触发正文回调
+      return;
+    }
+    fullText += delta.content;
     onToken(fullText);
   };
 
@@ -221,6 +271,38 @@ export async function readSseStream(
   return fullText;
 }
 
+/** 从非流式响应的 message 中提取正文：兼容字符串与分段数组两种 content 形态 */
+export function extractMessageText(message: { content?: unknown } | undefined): string {
+  const content = message?.content;
+  if (typeof content === 'string') {
+    return content;
+  }
+  if (Array.isArray(content)) {
+    return content
+      .map((part) =>
+        part && typeof part === 'object' && typeof (part as { text?: unknown }).text === 'string'
+          ? (part as { text: string }).text
+          : ''
+      )
+      .join('');
+  }
+  return '';
+}
+
+/** 单次生成请求的结果（正文 / 思考 / 结束原因 / 是否走了流式） */
+interface GenerationAttempt {
+  text: string;
+  reasoning: string;
+  finishReason: string | null;
+  streamed: boolean;
+}
+
+/**
+ * 调用视觉模型，根据图片生成绘画提示词。
+ *
+ * @throws {VisionApiError} 入参缺失、HTTP 错误、超时、用户取消、网络失败、
+ *   模型返回为空或 JSON 解析失败时抛出
+ */
 export async function generateImagePrompt(
   options: GenerateImagePromptOptions
 ): Promise<GenerateResult> {
@@ -246,10 +328,11 @@ export async function generateImagePrompt(
   const onExternalAbort = (): void => controller.abort();
   options.signal?.addEventListener('abort', onExternalAbort, { once: true });
 
-  try {
+  /** 发起一次生成请求（整体超时与取消信号由外层统一管理） */
+  const requestOnce = async (maxTokens: number): Promise<GenerationAttempt> => {
     const body: Record<string, unknown> = {
       model: model.trim(),
-      max_tokens: MAX_OUTPUT_TOKENS,
+      max_tokens: maxTokens,
       temperature: 0.7,
       // 防复读：长输出时抑制"同一短语反复出现"式退化（实测有效）
       frequency_penalty: FREQUENCY_PENALTY,
@@ -286,20 +369,61 @@ export async function generateImagePrompt(
       throw new VisionApiError(friendlyHttpError(response.status), response.status);
     }
 
-    let text: string;
     if (useStream && isSseResponse(response)) {
-      // 流式：边收边通过 onToken 推送累计全文，首 token 通常 2 秒内到达
-      text = (await readSseStream(response, onToken)).trim();
-    } else {
-      const data = await parseJsonResponse(response);
-      text = data.choices?.[0]?.message?.content?.trim() ?? '';
-      if (useStream && text) {
-        // 服务端忽略了 stream 参数：一次性回调，保证调用方语义一致
-        onToken(text);
+      // 流式：边收边通过 onToken 推送累计正文，思考增量单独收集
+      let reasoning = '';
+      let finishReason: string | null = null;
+      const text = await readSseStream(response, onToken, {
+        onReasoning: (partial) => {
+          reasoning = partial;
+        },
+        onFinishReason: (reason) => {
+          finishReason = reason;
+        },
+      });
+      return { text: text.trim(), reasoning: reasoning.trim(), finishReason, streamed: true };
+    }
+
+    const data = await parseJsonResponse(response);
+    const choice = data.choices?.[0];
+    return {
+      text: extractMessageText(choice?.message).trim(),
+      reasoning: (choice?.message?.reasoning_content ?? '').trim(),
+      finishReason: choice?.finish_reason ?? null,
+      streamed: false,
+    };
+  };
+
+  try {
+    let attempt = await requestOnce(MAX_OUTPUT_TOKENS);
+    // 思考型模型把输出额度耗在推理上时正文会为空（finish_reason=length）：
+    // 用双倍额度自动重试一次，避免用户手动重试撞同一面墙
+    if (!attempt.text && attempt.finishReason === 'length') {
+      const retry = await requestOnce(RETRY_MAX_OUTPUT_TOKENS);
+      if (retry.text || retry.reasoning) {
+        attempt = retry;
       }
     }
+
+    let text = attempt.text;
+    if (!text && attempt.reasoning) {
+      // 少数服务把最终答案只放在 reasoning_content 里：正文为空时用它兜底
+      text = attempt.reasoning;
+    }
     if (!text) {
+      if (attempt.finishReason === 'content_filter') {
+        throw new VisionApiError(
+          '模型因内容策略未返回正文（content_filter），请更换图片或模型后重试'
+        );
+      }
+      if (attempt.finishReason === 'length') {
+        throw new VisionApiError('模型输出达到长度上限但正文仍为空，请换用响应更快的模型后重试');
+      }
       throw new VisionApiError('模型返回内容为空，请重试');
+    }
+    if (useStream && !attempt.streamed) {
+      // 服务端忽略了 stream 参数：一次性回调，保证调用方语义一致
+      onToken?.(text);
     }
     if (outputFormat === 'json') {
       const structured = parseStructuredPrompt(text);

@@ -201,7 +201,7 @@ describe('generateImagePrompt', () => {
     ).rejects.toThrow(/JSON/);
   });
 
-  it('请求体包含防复读惩罚参数与 2000 max_tokens', async () => {
+  it('请求体包含防复读惩罚参数与 4096 max_tokens', async () => {
     vi.mocked(fetch).mockResolvedValueOnce(
       jsonResponse({ choices: [{ message: { content: 'prompt' } }] })
     );
@@ -213,7 +213,7 @@ describe('generateImagePrompt', () => {
       presence_penalty: number;
       stream?: boolean;
     };
-    expect(body.max_tokens).toBe(2000);
+    expect(body.max_tokens).toBe(4096);
     expect(body.frequency_penalty).toBe(0.6);
     expect(body.presence_penalty).toBe(0.3);
     // 未提供 onToken 时不启用流式
@@ -274,6 +274,108 @@ describe('generateImagePrompt', () => {
       /内容为空/
     );
   });
+
+  it('思考型模型正文为空时以 reasoning_content 兜底', async () => {
+    vi.mocked(fetch).mockResolvedValueOnce(
+      jsonResponse({
+        choices: [
+          {
+            message: { content: '', reasoning_content: 'a lighthouse at dusk, cinematic' },
+            finish_reason: 'stop',
+          },
+        ],
+      })
+    );
+    const result = await generateImagePrompt(BASE_OPTIONS);
+    expect(result.text).toBe('a lighthouse at dusk, cinematic');
+  });
+
+  it('content 为分段数组时拼接正文', async () => {
+    vi.mocked(fetch).mockResolvedValueOnce(
+      jsonResponse({
+        choices: [
+          {
+            message: {
+              content: [
+                { type: 'text', text: 'part one, ' },
+                { type: 'text', text: 'part two' },
+                { type: 'image_url', image_url: { url: 'x' } },
+              ],
+            },
+            finish_reason: 'stop',
+          },
+        ],
+      })
+    );
+    const result = await generateImagePrompt(BASE_OPTIONS);
+    expect(result.text).toBe('part one, part two');
+  });
+
+  it('思考耗尽额度（length）正文为空时以双倍额度自动重试', async () => {
+    vi.mocked(fetch)
+      .mockResolvedValueOnce(
+        jsonResponse({
+          choices: [
+            {
+              message: { content: '', reasoning_content: 'thinking only, no budget left' },
+              finish_reason: 'length',
+            },
+          ],
+        })
+      )
+      .mockResolvedValueOnce(
+        jsonResponse({
+          choices: [{ message: { content: 'final prompt' }, finish_reason: 'stop' }],
+        })
+      );
+    const result = await generateImagePrompt(BASE_OPTIONS);
+    expect(result.text).toBe('final prompt');
+    expect(vi.mocked(fetch)).toHaveBeenCalledTimes(2);
+    const [, retryInit] = vi.mocked(fetch).mock.calls[1] as [string, RequestInit];
+    const retryBody = JSON.parse(retryInit.body as string) as { max_tokens: number };
+    expect(retryBody.max_tokens).toBe(8192);
+  });
+
+  it('length 重试后正文仍为空时给出长度上限提示而非笼统重试', async () => {
+    const truncated = {
+      choices: [{ message: { content: '', reasoning_content: '' }, finish_reason: 'length' }],
+    };
+    vi.mocked(fetch)
+      .mockResolvedValueOnce(jsonResponse(truncated))
+      .mockResolvedValueOnce(jsonResponse(truncated));
+    await expect(generateImagePrompt(BASE_OPTIONS)).rejects.toThrow(/长度上限/);
+    expect(vi.mocked(fetch)).toHaveBeenCalledTimes(2);
+  });
+
+  it('content_filter 时给出内容策略提示且不重试', async () => {
+    vi.mocked(fetch).mockResolvedValueOnce(
+      jsonResponse({
+        choices: [{ message: { content: '' }, finish_reason: 'content_filter' }],
+      })
+    );
+    await expect(generateImagePrompt(BASE_OPTIONS)).rejects.toThrow(/内容策略/);
+    expect(vi.mocked(fetch)).toHaveBeenCalledTimes(1);
+  });
+
+  it('流式思考增量不混入正文，正文增量正常推送', async () => {
+    vi.mocked(fetch).mockResolvedValueOnce(
+      sseResponse([
+        'data: {"choices":[{"delta":{"reasoning_content":"let me look at "}}]}\n\n',
+        'data: {"choices":[{"delta":{"reasoning_content":"the composition"},"content":null}}]}\n\n',
+        'data: {"choices":[{"delta":{"content":"a red "}}]}\n\n',
+        'data: {"choices":[{"delta":{"content":"kite"}}]}\n\n',
+        'data: {"choices":[{"delta":{},"finish_reason":"stop"}]}\n\n',
+        'data: [DONE]\n\n',
+      ])
+    );
+    const seen: string[] = [];
+    const result = await generateImagePrompt({
+      ...BASE_OPTIONS,
+      onToken: (partial) => seen.push(partial),
+    });
+    expect(result.text).toBe('a red kite');
+    expect(seen).toEqual(['a red ', 'a red kite']);
+  });
 });
 
 describe('readSseStream', () => {
@@ -297,6 +399,23 @@ describe('readSseStream', () => {
     const full = await readSseStream(response, (partial) => seen.push(partial));
     expect(full).toBe('ok');
     expect(seen).toEqual(['ok']);
+  });
+
+  it('思考增量与 finish_reason 通过 hooks 透出且不混入正文', async () => {
+    const response = sseResponse([
+      'data: {"choices":[{"delta":{"reasoning_content":"think"}}]}\n\n',
+      'data: {"choices":[{"delta":{"content":"answer"}}]}\n\n',
+      'data: {"choices":[{"delta":{},"finish_reason":"stop"}]}\n\n',
+    ]);
+    const reasoningSeen: string[] = [];
+    const finishSeen: string[] = [];
+    const full = await readSseStream(response, () => {}, {
+      onReasoning: (partial) => reasoningSeen.push(partial),
+      onFinishReason: (reason) => finishSeen.push(reason),
+    });
+    expect(full).toBe('answer');
+    expect(reasoningSeen).toEqual(['think']);
+    expect(finishSeen).toEqual(['stop']);
   });
 });
 
