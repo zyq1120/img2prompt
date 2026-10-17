@@ -264,6 +264,69 @@ export async function deleteHistoryItem(id: string): Promise<void> {
   }
 }
 
+/** 配置备份快照：设置 + 自定义模板 + 历史记录（导出/导入用） */
+export interface BackupData {
+  app: 'img2prompt';
+  version: 1;
+  exportedAt: number;
+  settings: PluginSettings;
+  customTemplates: PromptTemplate[];
+  history: HistoryItem[];
+}
+
+/** 导出全部本地数据为一份备份（换浏览器、重装、迁移时用） */
+export async function exportAllData(): Promise<BackupData> {
+  const [settings, customTemplates, history] = await Promise.all([
+    getSettings(),
+    getCustomTemplates(),
+    getHistory(),
+  ]);
+  return {
+    app: 'img2prompt',
+    version: 1,
+    exportedAt: Date.now(),
+    settings,
+    customTemplates,
+    history,
+  };
+}
+
+/**
+ * 导入备份并覆盖现有数据。内容逐项走与正常读写相同的清洗；
+ * 备份里没有可用服务商配置时抛错，且不改动现有任何数据。
+ */
+export async function importAllData(data: unknown): Promise<void> {
+  if (!data || typeof data !== 'object') {
+    throw new Error('备份文件格式不正确');
+  }
+  const raw = data as Partial<BackupData>;
+  const rawSettings = raw.settings as (Partial<PluginSettings> & LegacySettings) | undefined;
+  const hasProviders =
+    !!rawSettings && Array.isArray(rawSettings.providers) && rawSettings.providers.length > 0;
+  const hasLegacy =
+    !!rawSettings && !!(rawSettings.apiKey || rawSettings.baseUrl || rawSettings.model);
+  if (!rawSettings || typeof rawSettings !== 'object' || (!hasProviders && !hasLegacy)) {
+    throw new Error('备份中没有可用的服务商配置');
+  }
+  const settings = sanitizeSettings(rawSettings);
+  const customTemplates = Array.isArray(raw.customTemplates)
+    ? (raw.customTemplates as PromptTemplate[])
+        .filter((t) => t && typeof t === 'object')
+        .map(sanitizeTemplate)
+        .filter((t) => t.id && !t.builtin)
+    : [];
+  const history = Array.isArray(raw.history)
+    ? (raw.history as HistoryItem[])
+        .filter((h) => h && typeof h === 'object')
+        .map(sanitizeHistoryItem)
+    : [];
+  await chrome.storage.local.set({
+    [STORAGE_KEYS.settings]: settings,
+    [STORAGE_KEYS.customTemplates]: customTemplates,
+    [STORAGE_KEYS.history]: history,
+  });
+}
+
 /** 清洗设置对象：只保留已知字段并做类型兜底，兼容 v0.1 扁平结构 */
 function sanitizeSettings(raw: Partial<PluginSettings> | undefined): PluginSettings {
   const defaults = defaultSettings();

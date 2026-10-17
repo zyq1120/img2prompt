@@ -115,6 +115,30 @@
     "message": "General",
     "description": "设置页：通用分组标题"
   },
+  "optionsCardData": {
+    "message": "Data"
+  },
+  "optionsExportData": {
+    "message": "Export settings"
+  },
+  "optionsImportData": {
+    "message": "Import settings"
+  },
+  "optionsDataHint": {
+    "message": "Export all providers (including API keys), custom templates and history as a single JSON backup. Import it here to restore after switching browsers, reinstalling or migrating."
+  },
+  "optionsExportOk": {
+    "message": "Settings exported"
+  },
+  "optionsImportOk": {
+    "message": "Import complete, settings restored"
+  },
+  "optionsImportInvalid": {
+    "message": "Import failed: not a valid Img2Prompt settings backup"
+  },
+  "optionsImportConfirm": {
+    "message": "Importing will overwrite all current providers, templates and history. Continue?"
+  },
   "contextMenuRegionTitle": {
     "message": "Select region & recognize"
   },

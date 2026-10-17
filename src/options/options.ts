@@ -9,9 +9,11 @@ import {
   cleanApiKey,
   deleteCustomTemplate,
   deleteProvider,
+  exportAllData,
   getActiveProvider,
   getSettings,
   getTemplates,
+  importAllData,
   saveCustomTemplate,
   saveSettings,
   setActiveProvider,
@@ -67,6 +69,10 @@ const templateUserEnInput = document.getElementById('templateUserEn') as HTMLTex
 const saveTemplateBtn = document.getElementById('saveTemplateBtn') as HTMLButtonElement;
 const cancelTemplateBtn = document.getElementById('cancelTemplateBtn') as HTMLButtonElement;
 
+const exportDataBtn = document.getElementById('exportDataBtn') as HTMLButtonElement;
+const importDataBtn = document.getElementById('importDataBtn') as HTMLButtonElement;
+const importFileInput = document.getElementById('importFileInput') as HTMLInputElement;
+
 const defaultLangSelect = document.getElementById('defaultLang') as HTMLSelectElement;
 const saveBtn = document.getElementById('saveBtn') as HTMLButtonElement;
 const testBtn = document.getElementById('testBtn') as HTMLButtonElement;
@@ -88,6 +94,46 @@ saveBtn.addEventListener('click', async () => {
   settings.defaultLang = defaultLangSelect.value as PromptLanguage;
   await saveSettings(settings);
   showStatus(t('optionsSaved'), true);
+});
+
+/* ————— 配置导出/导入 ————— */
+
+exportDataBtn.addEventListener('click', async () => {
+  const data = await exportAllData();
+  const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  const now = new Date();
+  const stamp = `${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, '0')}${String(now.getDate()).padStart(2, '0')}`;
+  link.href = url;
+  link.download = `img2prompt-backup-${stamp}.json`;
+  link.click();
+  URL.revokeObjectURL(url);
+  showStatus(t('optionsExportOk'), true);
+});
+
+importDataBtn.addEventListener('click', () => {
+  importFileInput.click();
+});
+
+importFileInput.addEventListener('change', async () => {
+  const file = importFileInput.files?.[0];
+  importFileInput.value = '';
+  if (!file) {
+    return;
+  }
+  // 覆盖现有全部数据：先确认
+  if (!window.confirm(t('optionsImportConfirm'))) {
+    return;
+  }
+  try {
+    const parsed: unknown = JSON.parse(await file.text());
+    await importAllData(parsed);
+    await refreshAll();
+    showStatus(t('optionsImportOk'), true);
+  } catch {
+    showStatus(t('optionsImportInvalid'), false);
+  }
 });
 
 testBtn.addEventListener('click', async () => {

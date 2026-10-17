@@ -32,9 +32,10 @@
     "48": "assets/icons/icon-48.png"
   },
   "manifest_version": 3,
+  "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAqKW84tdnuBZrFHblcNGAZRQN44uRmkD0XIshJxa87TO6697G9L+KezGixKxLYTDmcgZ4sGYtNkRam1W2rHscaHRKF8LnJFw0grXa7NRjy3f9Fe3NWxsxIrHZg3GT9uiSivTOPGM+1BBEVJJmO0HzPLlHZ3kWowsQQFMhe432nfzJR5kAzH6ua/C/CyREPZvQVaAL+B4W0rIyZl2pgtj2vtu3BzehUmOzWRFR4ePOoWSYzptSigAW/B7alxXw+lV0Kxbb/okDGbnl/DckZX9yoNT/5jpfVGE/MyQJAEiO3juv2wxaGAmIgWkdD/rONDFqOnoZCXRz3CuR9lkLY5vdDwIDAQAB",
   "minimum_chrome_version": "116",
   "name": "__MSG_appName__",
   "options_page": "options/options.html",
   "permissions": ["contextMenus", "storage", "scripting", "activeTab"],
-  "version": "3.2.0"
+  "version": "3.2.1"
 }

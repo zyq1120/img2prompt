@@ -115,6 +115,30 @@
     "message": "通用",
     "description": "设置页：通用分组标题"
   },
+  "optionsCardData": {
+    "message": "数据"
+  },
+  "optionsExportData": {
+    "message": "导出配置"
+  },
+  "optionsImportData": {
+    "message": "导入配置"
+  },
+  "optionsDataHint": {
+    "message": "把全部服务商（含 API Key）、自定义模板与历史记录导出为一个 JSON 文件备份；换浏览器、重装或迁移时，在这里导入即可恢复。"
+  },
+  "optionsExportOk": {
+    "message": "配置已导出"
+  },
+  "optionsImportOk": {
+    "message": "导入成功，配置已恢复"
+  },
+  "optionsImportInvalid": {
+    "message": "导入失败：这不是有效的 Img2Prompt 配置备份"
+  },
+  "optionsImportConfirm": {
+    "message": "导入将覆盖当前的全部服务商、模板与历史记录，确定继续吗？"
+  },
   "contextMenuRegionTitle": {
     "message": "框选截图并识别"
   },

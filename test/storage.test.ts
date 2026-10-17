@@ -8,12 +8,14 @@ import {
   deleteCustomTemplate,
   deleteHistoryItem,
   deleteProvider,
+  exportAllData,
   getActiveProvider,
   getCustomTemplates,
   getHistory,
   getSettings,
   getTemplate,
   getTemplates,
+  importAllData,
   saveCustomTemplate,
   saveSettings,
   searchHistory,
@@ -390,5 +392,101 @@ describe('provider Key 清洗（sanitizeProvider）', () => {
     expect(provider.apiKey).toBe('sk-test-key');
     const settings = await getSettings();
     expect(settings.providers.find((p) => p.id === provider.id)?.apiKey).toBe('sk-test-key');
+  });
+});
+
+describe('配置导出/导入', () => {
+  it('导出包含设置、自定义模板与历史的完整快照', async () => {
+    await addProvider(makeProvider('ExportSrc'));
+    await saveCustomTemplate({
+      id: '',
+      name: '导出模板',
+      systemPrompt: 'sys',
+      userTextZh: 'zh',
+      userTextEn: 'en',
+      outputFormat: 'text',
+    });
+    await addHistoryItem({
+      imageUrl: 'https://example.com/a.jpg',
+      source: 'context-menu',
+      thumbnail: '',
+      prompt: 'a prompt',
+      lang: 'zh',
+      model: 'gpt-4o',
+      providerName: 'ExportSrc',
+      templateId: DEFAULT_TEMPLATE_ID,
+    });
+    const backup = await exportAllData();
+    expect(backup.app).toBe('img2prompt');
+    expect(backup.settings.providers.some((p) => p.name === 'ExportSrc')).toBe(true);
+    expect(backup.customTemplates.some((t) => t.name === '导出模板')).toBe(true);
+    expect(backup.history.some((h) => h.prompt === 'a prompt')).toBe(true);
+  });
+
+  it('导入可覆盖恢复到快照状态（多加的服务商被移除）', async () => {
+    await addProvider(makeProvider('ExportSrc'));
+    const backup = await exportAllData();
+    const extra = await addProvider(makeProvider('ShouldVanish'));
+    await importAllData(backup);
+    const settings = await getSettings();
+    expect(settings.providers.some((p) => p.id === extra.id)).toBe(false);
+    expect(settings.providers.some((p) => p.name === 'ExportSrc')).toBe(true);
+  });
+
+  it('导入内容会走清洗（Key 去空白、坏条目被过滤）', async () => {
+    await importAllData({
+      app: 'img2prompt',
+      version: 1,
+      exportedAt: 0,
+      settings: {
+        providers: [
+          {
+            id: 'p1',
+            name: 'Imp',
+            apiKey: '  sk-imp\n',
+            baseUrl: 'https://api.example.com/v1/',
+            model: 'm1',
+          },
+        ],
+        activeProviderId: 'p1',
+        activeTemplateId: DEFAULT_TEMPLATE_ID,
+        defaultLang: 'zh',
+      },
+      customTemplates: [{ id: 'builtin:x', name: '伪内置', builtin: true }, { name: '无 id 丢弃' }],
+      history: [{ prompt: 'kept' }, null],
+    });
+    const settings = await getSettings();
+    expect(settings.providers).toHaveLength(1);
+    expect(settings.providers[0]!.apiKey).toBe('sk-imp');
+    expect(settings.providers[0]!.baseUrl).toBe('https://api.example.com/v1');
+    const customs = await getCustomTemplates();
+    expect(customs.some((t) => t.name === '伪内置')).toBe(false);
+    const history = await getHistory();
+    expect(history).toHaveLength(1);
+    expect(history[0]!.prompt).toBe('kept');
+  });
+
+  it('无可用服务商的备份被拒绝且现有数据不动', async () => {
+    await addProvider(makeProvider('KeepMe'));
+    const before = await getSettings();
+    await expect(importAllData({})).rejects.toThrow(/格式不正确|服务商/);
+    await expect(importAllData({ settings: { providers: [] } })).rejects.toThrow(/服务商/);
+    await expect(importAllData(null)).rejects.toThrow();
+    const after = await getSettings();
+    expect(after.providers.map((p) => p.id)).toEqual(before.providers.map((p) => p.id));
+  });
+
+  it('兼容 v0.1 扁平结构的设置备份', async () => {
+    await importAllData({
+      settings: {
+        apiKey: 'sk-legacy',
+        baseUrl: 'https://legacy.example.com/v1',
+        model: 'old-vision',
+      },
+    });
+    const settings = await getSettings();
+    expect(settings.providers).toHaveLength(1);
+    expect(settings.providers[0]!.apiKey).toBe('sk-legacy');
+    expect(settings.providers[0]!.model).toBe('old-vision');
   });
 });
