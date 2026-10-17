@@ -7,3 +7,9 @@ coverage/
 
 # E2E 临时产物
 e2e/report.json
+
+# NVIDIA 探活临时产物（2026-10-16 全量测试的工作文件，只留本地不进仓）
+.venv-probe/
+e2e/probe-*
+e2e/nv_model_ids.json
+e2e/test-super-vl-snippet.py
